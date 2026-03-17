@@ -34,6 +34,7 @@ const CertificationDetail: React.FC = () => {
   };
 
   useEffect(() => {
+    console.log('当前获取到的通知ID:', id);
     if (id) fetchDetail();
   }, [id]);
 

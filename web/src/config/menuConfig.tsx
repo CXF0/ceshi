@@ -58,6 +58,12 @@ export const menuConfig: MenuItem[] = [
         icon: <PartitionOutlined />, 
         label: '认证类型' 
       },
+      { 
+        key: '/system/notification', 
+        icon: <FileProtectOutlined />, 
+        label: '通知管理' 
+      },
+      
     ]
   },
 ];

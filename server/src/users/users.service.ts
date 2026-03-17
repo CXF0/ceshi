@@ -12,7 +12,69 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
+    // 💡 建议在 UsersModule 中也引入 Dept 实体，或者这里注入一个通用的连接来查询部门
+    // 如果没有 DeptRepository，可以通过 usersRepository 聚合查询，但推荐注入专门的 Repository
   ) {}
+
+  /**
+   * ✨ 获取组织架构树 (用于定向发布选择器)
+   * 返回结构：[ { title: '部门', value: 'dept-1', children: [ { title: '用户', value: 'user-1' } ] } ]
+   */
+  async getOrgTree(): Promise<any[]> {
+    // 1. 获取所有用户
+    const users = await this.usersRepository.find({
+      select: ['id', 'nickname', 'deptId'],
+      where: { status: 1 } // 仅查询启用状态的用户
+    });
+
+    // 2. 模拟部门数据（或者从数据库查询）
+    // 对应你之前提供的部门列表
+    const depts = [
+      { id: 1, name: '寻梦控股昆明分公司' },
+      { id: 2, name: '寻梦认证成都分公司' },
+      { id: 3, name: '寻梦控股总公司' },
+      { id: 4, name: '寻梦认证杭州分公司' },
+      { id: 5, name: '寻梦控股宣城总公司' },
+    ];
+
+    // 3. 获取所有角色（可选：如果需要定向到角色）
+    const roles = await this.roleRepository.find({ select: ['id', 'roleName', 'roleKey'] });
+
+    // 4. 构建树形结构
+    const treeData = depts.map(dept => {
+      // 筛选属于该部门的用户
+      const deptUsers = users
+        .filter(user => user.deptId === dept.id)
+        .map(user => ({
+          title: `👤 ${user.nickname}`,
+          value: `user-${user.id}`, // 加前缀区分类型
+          key: `user-${user.id}`,
+          isLeaf: true,
+        }));
+
+      return {
+        title: dept.name,
+        value: `dept-${dept.id}`,
+        key: `dept-${dept.id}`,
+        children: deptUsers,
+      };
+    });
+
+    // 5. 额外：在顶层加入按“角色”筛选的分类（如果需要）
+    const roleNodes = {
+      title: '按角色群发',
+      value: 'role-group',
+      key: 'role-group',
+      children: roles.map(role => ({
+        title: `🎖️ ${role.roleName}`,
+        value: `role-${role.roleKey}`,
+        key: `role-${role.roleKey}`,
+        isLeaf: true,
+      }))
+    };
+
+    return [...treeData, roleNodes];
+  }
 
   /**
    * 登录查询 - 已适配去冗余化
@@ -20,16 +82,14 @@ export class UsersService {
   async findOne(username: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({
       where: { username },
-      // 注意：这里已经没有 roleKey 了
       select: ['id', 'username', 'password', 'nickname', 'deptId', 'status'],
       relations: ['roles'],
     });
 
-    // ✨ 核心修复：手动挂载动态角色标识
     if (user && user.roles && user.roles.length > 0) {
-      user.roleKey = user.roles[0].roleKey;
+      (user as any).roleKey = user.roles[0].roleKey;
     } else if (user) {
-      user.roleKey = 'user'; // 保底角色
+      (user as any).roleKey = 'user'; 
     }
 
     return user;
@@ -45,10 +105,9 @@ export class UsersService {
       order: { createdAt: 'DESC' }
     });
 
-    // 同样为列表中的每个用户挂载动态角色标识
     return users.map(user => {
       if (user.roles && user.roles.length > 0) {
-        user.roleKey = user.roles[0].roleKey;
+        (user as any).roleKey = user.roles[0].roleKey;
       }
       return user;
     });
@@ -78,16 +137,14 @@ export class UsersService {
     if (roleIds && roleIds.length > 0) {
       const roles = await this.roleRepository.findBy({ id: In(roleIds) });
       newUser.roles = roles;
-      // 这里的赋值是给对象属性，即使数据库没这一列，JSON里也会有
       if (roles && roles.length > 0) {
-        newUser.roleKey = roles[0].roleKey;
+        (newUser as any).roleKey = roles[0].roleKey;
       }
     }
 
     const savedUser: any = await this.usersRepository.save(newUser);
     
     const { password: _, ...userWithoutPassword } = savedUser;
-    // 确保返回时包含动态赋值的 roleKey
     if (savedUser.roles?.length > 0) {
       (userWithoutPassword as any).roleKey = savedUser.roles[0].roleKey;
     }
@@ -121,7 +178,7 @@ export class UsersService {
       const roles = await this.roleRepository.findBy({ id: In(roleIds) });
       user.roles = roles;
       if (roles && roles.length > 0) {
-        user.roleKey = roles[0].roleKey;
+        (user as any).roleKey = roles[0].roleKey;
       }
     }
 

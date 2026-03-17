@@ -1,0 +1,130 @@
+/* web/src/pages/system/notification/detail/index.less */
+
+.notice-detail-container {
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #f4f7f9; /* 浅蓝灰色背景，比纯白更护眼 */
+  padding: 40px 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  
+  /* 确保页面是绝对定位，覆盖任何潜伏的菜单边距 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+
+  .detail-header-nav {
+    max-width: 900px;
+    margin: 0 auto 20px auto;
+  }
+
+  .notice-article-card {
+    max-width: 900px;
+    margin: 0 auto;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(149, 157, 165, 0.1);
+    
+    :global {
+      .ant-card-body {
+        padding: 40px 50px; /* 加大内边距，提升阅读高级感 */
+      }
+    }
+  }
+
+  .article-header {
+    text-align: center;
+    margin-bottom: 30px;
+
+    h2 {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .article-meta {
+      color: #8c8c8c;
+    }
+  }
+
+  .article-content {
+    .rich-text-body {
+      font-size: 16px;
+      line-height: 1.8;
+      color: #374151;
+      
+      /* 💡 关键：防止图片撑破页面 */
+      img {
+        max-width: 100% !important;
+        height: auto !important;
+        border-radius: 8px;
+        margin: 20px 0;
+        display: block;
+      }
+
+      p {
+        margin-bottom: 1.5em;
+      }
+    }
+  }
+
+  /* 附件区域样式 */
+  .file-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
+
+    .file-card {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      width: 240px;
+
+      .file-icon {
+        font-size: 24px;
+        color: #71ccbc;
+        margin-right: 12px;
+      }
+
+      .file-name {
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+
+  .article-footer {
+    padding-top: 40px;
+    
+    .like-btn {
+      min-width: 120px;
+      height: 48px;
+      font-size: 16px;
+      
+      &.active {
+        background: #71ccbc;
+        border-color: #71ccbc;
+      }
+    }
+  }
+}
+
+/* 适配移动端 */
+@media (max-width: 768px) {
+  .notice-detail-container {
+    padding: 20px 10px;
+    .notice-article-card {
+      :global {
+        .ant-card-body {
+          padding: 20px;
+        }
+      }
+    }
+  }
+}

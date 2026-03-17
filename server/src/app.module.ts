@@ -9,6 +9,8 @@ import { InstitutionsModule } from './institutions/institution.module';
 import { CertTypesModule } from './cert-types/cert-types.module';
 import { CertificatesModule } from './certificates/certificates.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { NotificationsModule } from './notifications/notifications.module';
+
 @Module({
   imports: [
     // 1. 数据库基础配置
@@ -36,6 +38,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     CertTypesModule,
     CertificatesModule,
     DashboardModule,
+    NotificationsModule,
   ],
   // 3. 💡 控制器必须放在这里！
   controllers: [
