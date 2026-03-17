@@ -1,0 +1,15 @@
+# 忽略依赖包
+node_modules/
+**/node_modules/
+
+# 忽略编译产物
+dist/
+build/
+.vite/
+
+# 忽略环境配置（保护数据库密码）
+.env
+.env.local
+
+# 忽略日志
+*.log
