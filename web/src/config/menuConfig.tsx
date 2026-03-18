@@ -4,7 +4,11 @@ import {
   FileProtectOutlined, 
   ShoppingOutlined, 
   SettingOutlined,
-  PartitionOutlined
+  PartitionOutlined,
+  TeamOutlined,
+  BellOutlined,
+  SafetyCertificateOutlined,
+  BankOutlined
 } from '@ant-design/icons';
 
 export interface MenuItem {
@@ -23,8 +27,8 @@ export const menuConfig: MenuItem[] = [
     roles: [] 
   },
   { 
-    key: 'crm', 
-    icon: <FileProtectOutlined />, 
+    key: 'crm_group', 
+    icon: <TeamOutlined />, 
     label: '客户管理', 
     roles: ['admin', 'manager'],
     children: [
@@ -32,38 +36,42 @@ export const menuConfig: MenuItem[] = [
     ]
   },
   { 
-    key: 'contract', 
+    key: 'contract_group', 
     icon: <ShoppingOutlined />, 
     label: '合同管理', 
     roles: ['admin', 'auditor'],
     children: [
       { key: '/contract', label: '合同列表' },
-      { key: '/contract/:id', label: '合同模板' },
     ]
   },
   { 
-    key: '/institution', 
-    icon: <PartitionOutlined />, 
+    key: '/certificates', // 
+    icon: <BankOutlined />, 
+    label: '证书管理', 
+    roles: ['admin', 'auditor'] 
+  },
+  { 
+    key: '/institutions', // 💡 已统一为复数，确保与 App.tsx 路由一致
+    icon: <BankOutlined />, 
     label: '机构管理', 
     roles: ['admin', 'auditor'] 
   },
   { 
-    key: 'system', // 父级用普通字符串，不要带 /
+    key: 'system', 
     icon: <SettingOutlined />, 
     label: '系统设置', 
     roles: ['admin'],
     children: [
       { 
-        key: '/system/certification', // 👈 子级必须带 /，且必须与 App.tsx 路由完全一致
-        icon: <PartitionOutlined />, 
+        key: '/system/certification', 
+        icon: <SafetyCertificateOutlined />, 
         label: '认证类型' 
       },
       { 
         key: '/system/notification', 
-        icon: <FileProtectOutlined />, 
+        icon: <BellOutlined />, 
         label: '通知管理' 
       },
-      
     ]
   },
 ];

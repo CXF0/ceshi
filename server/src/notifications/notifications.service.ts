@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, Repository, Like } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { NotificationTarget } from './entities/notification-target.entity';
 
@@ -14,7 +14,27 @@ export class NotificationsService {
   ) {}
 
   /**
-   * 💡 接口1：获取当前用户可见的通知列表
+   * 💡 接口1：管理端 - 获取公告列表 (带筛选)
+   */
+  async findAll(query: any) {
+    const { title, type, status } = query;
+    const where: any = {};
+
+    if (title) where.title = Like(`%${title}%`);
+    if (type !== undefined && type !== '') where.type = type;
+    if (status !== undefined && status !== '') where.status = status;
+
+    return await this.noticeRepo.find({
+      where,
+      order: {
+        priority: 'DESC',
+        createTime: 'DESC',
+      },
+    });
+  }
+
+  /**
+   * 💡 接口2：用户端 - 获取当前用户可见的通知列表
    */
   async getMyNotifications(user: any) {
     const { userId, deptId, roleKey } = user;
@@ -23,7 +43,6 @@ export class NotificationsService {
       .leftJoin('n.targets', 't')
       .where('n.status = :status', { status: 1 });
 
-    // 复杂的定向逻辑筛选
     query.andWhere(new Brackets(qb => {
       qb.where('n.targetScope = :all', { all: 'all' })
         .orWhere('(t.targetType = :userType AND t.targetId = :userId)', { userType: 'user', userId })
@@ -31,80 +50,102 @@ export class NotificationsService {
         .orWhere('(t.targetType = :roleType AND t.targetId = :roleKey)', { roleType: 'role', roleKey });
     }));
 
-    // 使用 groupBy 避免因多个 target 导致的重复数据
     return await query
-      .select(['n.id', 'n.title', 'n.type', 'n.createTime', 'n.viewCount', 'n.targetScope'])
+      .select(['n.id', 'n.title', 'n.type', 'n.createTime', 'n.viewCount', 'n.priority'])
       .groupBy('n.id')
-      .orderBy('n.createTime', 'DESC')
+      .orderBy('n.priority', 'DESC')
+      .addOrderBy('n.createTime', 'DESC')
       .getMany();
   }
 
   /**
-   * 💡 接口2：发布通知（保存主体及定向规则）
+   * 💡 接口3：创建或更新通知
+   * 修复：解决 Notification | null 的类型分配问题
    */
-  async create(createDto: any) {
-    const { targets, ...noticeData } = createDto;
-    
-    // 1. 保存通知主体
-    const notice = await this.noticeRepo.save(noticeData);
+  async save(dto: any): Promise<Notification> {
+    const { id, targets, ...noticeData } = dto;
+    let notice: Notification;
 
-    // 2. 如果是定向发布，保存规则
-    if (noticeData.targetScope === 'custom' && targets?.length > 0) {
-      const targetEntities = targets.map(t => ({
+    if (id) {
+      // 编辑模式
+      await this.noticeRepo.update(id, noticeData);
+      const updatedNotice = await this.noticeRepo.findOne({ where: { id } });
+      
+      // 这里的校验解决了 "null" 不能赋值给 "Notification" 的问题
+      if (!updatedNotice) {
+        throw new NotFoundException(`未找到 ID 为 ${id} 的公告`);
+      }
+      notice = updatedNotice;
+
+      // 清除并重新保存定向规则
+      await this.targetRepo.delete({ noticeId: id });
+    } else {
+      // 新增模式
+      notice = await this.noticeRepo.save(noticeData);
+    }
+
+    // 处理定向发布规则
+    if (dto.targetScope === 'custom' && targets?.length > 0) {
+      const targetEntities = targets.map((t: any) => ({
         ...t,
         noticeId: notice.id
       }));
       await this.targetRepo.save(targetEntities);
     }
+
     return notice;
   }
 
   /**
-   * 💡 接口3：获取通知详情（带阅读计数自增）
+   * 💡 接口4：获取通知详情 (自增阅读量)
    */
-  async getDetail(id: number) {
+  async getDetail(id: number): Promise<Notification> {
     const notice = await this.noticeRepo.findOne({
       where: { id },
       relations: ['targets']
     });
 
     if (!notice) {
-      throw new NotFoundException(`ID为 ${id} 的通知不存在或已被删除`);
+      throw new NotFoundException(`ID为 ${id} 的通知不存在`);
     }
 
-    // ✨ 异步自增阅读量，不阻塞主流程
     this.noticeRepo.increment({ id }, 'viewCount', 1);
-
     return notice;
   }
 
   /**
-   * 💡 接口4：点赞处理
+   * 💡 接口5：快捷更新状态 (发布/撤回)
+   */
+  async updateStatus(id: number, status: number) {
+    const notice = await this.noticeRepo.findOne({ where: { id } });
+    if (!notice) {
+      throw new NotFoundException('公告不存在');
+    }
+    
+    return await this.noticeRepo.update(id, { status });
+  }
+
+  /**
+   * 💡 接口6：点赞处理
    */
   async toggleLike(id: number, isLike: boolean) {
     const notice = await this.noticeRepo.findOne({ where: { id } });
     if (!notice) throw new NotFoundException('通知不存在');
 
-    // 根据前端传参增加或减少点赞数
     const incrementValue = isLike ? 1 : -1;
-    
-    // 确保点赞数不为负数
     if (!isLike && notice.likeCount <= 0) return { count: 0 };
 
     await this.noticeRepo.increment({ id }, 'likeCount', incrementValue);
     
-    // 返回最新的点赞数
     const updated = await this.noticeRepo.findOne({ where: { id }, select: ['likeCount'] });
     return { count: updated?.likeCount || 0 };
   }
 
   /**
-   * 💡 接口5：删除通知
+   * 💡 接口7：删除通知
    */
   async remove(id: number) {
-    // 先删除关联的 target 规则（物理删除或级联删除）
     await this.targetRepo.delete({ noticeId: id });
-    // 再删除通知主体
     return await this.noticeRepo.delete(id);
   }
 }

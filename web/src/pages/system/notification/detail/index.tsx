@@ -23,7 +23,7 @@ import {
 } from '@ant-design/icons';
 import request from '../../../../utils/request';
 import './index.less';
-
+import { getNotificationDetail } from '../../../../services/notification';
 const { Title, Text } = Typography;
 
 const NotificationDetail: React.FC = () => {
@@ -54,14 +54,18 @@ const NotificationDetail: React.FC = () => {
   const fetchDetail = async (noticeId: number) => {
   try {
     setLoading(true);
-    const res = await request(`/notifications/detail/${noticeId}`, { method: 'GET' });
-    if (res) {
-      // 💡 适配不同的接口返回格式
-      const finalData = res.data || res; 
-      setData(finalData);
-      setLikeCount(finalData.likeCount ?? 0);
+    // 2. 使用 service 函数
+    const res = await getNotificationDetail(noticeId);
+    
+    // 💡 重点：根据你的 service 拦截器 (response.data)，res 现在就是后端返回的 {code, data, message}
+    if (res && res.code === 200) {
+      setData(res.data);
+      setLikeCount(res.data.likeCount ?? 0);
+    } else {
+      message.error(res?.message || '获取通知详情失败');
     }
   } catch (error: any) {
+    console.error('Fetch error:', error);
     message.error('获取通知详情失败');
   } finally {
     setLoading(false);
@@ -71,16 +75,36 @@ const NotificationDetail: React.FC = () => {
   const handleLike = async () => {
     try {
       const nextLikedState = !isLiked;
-      // 💡 对应你 NotificationsService 中的 toggleLike 接口
-      const res = await request(`/notifications/like/${id}`, {
+      
+      // 1. 发起请求
+      const res: any = await request(`/notifications/like/${id}`, {
         method: 'POST',
         data: { isLike: nextLikedState }
       });
       
-      setIsLiked(nextLikedState);
-      setLikeCount(nextLikedState ? likeCount + 1 : likeCount - 1);
-      message.success(nextLikedState ? '点赞成功' : '已取消点赞');
+      console.log('点赞接口返回内容:', res);
+
+      // 2. 这里的判断要包容 200 和 201
+      // NestJS 的 @Post 默认返回 201，如果你的拦截器没把 code 改成 200，这里就会跳过
+      if (res && (res.code === 200 || res.statusCode === 201 || res.data)) {
+        
+        // 💡 重点：从后端返回的最新 count 中取值
+        // 根据你之前的 Service 逻辑，后端返回的是 { count: 数值 }
+        const serverCount = res.data?.count;
+        
+        // 3. 强制更新本地状态，触发 UI 重绘
+        if (typeof serverCount === 'number') {
+          setLikeCount(serverCount);
+        } else {
+          // 如果后端没给 count，手动加减
+          setLikeCount(prev => nextLikedState ? prev + 1 : Math.max(0, prev - 1));
+        }
+        
+        setIsLiked(nextLikedState);
+        message.success(nextLikedState ? '点赞成功' : '已取消点赞');
+      }
     } catch (error) {
+      console.error('点赞失败:', error);
       message.error('操作失败');
     }
   };
@@ -177,6 +201,7 @@ const NotificationDetail: React.FC = () => {
               icon={isLiked ? <LikeFilled /> : <LikeOutlined />}
               onClick={handleLike}
               className={isLiked ? 'like-btn active' : 'like-btn'}
+              style={{ transition: 'all 0.3s' }}
             >
               点赞 {likeCount}
             </Button>

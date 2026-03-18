@@ -2,7 +2,7 @@ import React, { memo, useEffect, useState } from 'react';
 import { Card, Row, Col, Typography, Avatar, Button, Space, Divider, Badge, message } from 'antd';
 import { UserOutlined, RocketOutlined, FileAddOutlined, BellOutlined, RightOutlined } from '@ant-design/icons';
 import request from '../../../utils/request'; // 确保路径正确
-
+import { getNotifications } from '../../../services/notification';
 const { Title, Text } = Typography;
 
 const GlobalOverview: React.FC<{ user: any }> = memo(({ user }) => {
@@ -12,14 +12,21 @@ const GlobalOverview: React.FC<{ user: any }> = memo(({ user }) => {
   useEffect(() => {
     const fetchNotice = async () => {
       try {
-        // 💡 对应你 NotificationsService 中的 getMyNotifications 接口
-        const res = await request('/notifications/my', { method: 'GET' });
-        if (res && Array.isArray(res.data) && res.data.length > 0) {
-          // 取最新的一条
-          setLatestNotice(res.data[0]);
+        // 建议：直接调用你已经跑通的 service 函数
+        const res = await getNotifications({ status: 1 });
+        console.log('首页获取公告原始响应:', res);
+
+        // 💡 适配逻辑：根据你 request.ts 的封装情况自动识别
+        const list = Array.isArray(res) ? res : res?.data;
+
+        if (list && list.length > 0) {
+          console.log('成功提取到公告列表:', list);
+          setLatestNotice(list[0]);
+        } else {
+          console.warn('接口通了，但列表是空的');
         }
       } catch (error) {
-        console.error('获取公告失败', error);
+        console.error('看板获取公告失败:', error);
       }
     };
     fetchNotice();

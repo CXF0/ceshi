@@ -224,30 +224,45 @@ const fetchList = async (searchValues: any = {}) => {
 
       {/* 弹窗部分保持原来的 Modal 代码即可... */}
       <Modal
-        title={editingId ? '编辑认证类型' : '新增认证类型'}
-        open={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        onOk={() => form.submit()}
-        width={500}
-        destroyOnClose={true}
-      >
-        <Form form={form} layout="vertical" onFinish={onFinish} style={{ marginTop: 16 }}>
-           {/* ... 这里是你之前的 Form 内部代码 ... */}
-           <Row gutter={16}>
-             <Col span={12}><Form.Item name="parent_code" label="大类代码" rules={[{ required: true }]}><Input /></Form.Item></Col>
-             <Col span={12}><Form.Item name="parent_name" label="大类名称" rules={[{ required: true }]}><Input /></Form.Item></Col>
-           </Row>
-           <Row gutter={16}>
-             <Col span={12}><Form.Item name="type_code" label="项目代码" rules={[{ required: true }]}><Input disabled={!!editingId} /></Form.Item></Col>
-             <Col span={12}><Form.Item name="type_name" label="项目名称" rules={[{ required: true }]}><Input /></Form.Item></Col>
-           </Row>
-           <Form.Item name="description" label="项目描述"><Input.TextArea rows={2} /></Form.Item>
-           <Row gutter={16}>
-             <Col span={12}><Form.Item name="sort" label="排序权重"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-             <Col span={12}><Form.Item name="is_active" label="状态" valuePropName="checked"><Switch /></Form.Item></Col>
-           </Row>
-        </Form>
-      </Modal>
+  title={editingId ? '编辑认证类型' : '新增认证类型'}
+  open={modalVisible}
+  onCancel={() => setModalVisible(false)}
+  onOk={() => form.submit()}
+  width={600} // 调宽一点，因为字段变多了
+  destroyOnClose
+>
+  <Form form={form} layout="vertical" onFinish={onFinish}>
+    <Row gutter={16}>
+      <Col span={12}><Form.Item name="parent_code" label="大类代码" rules={[{ required: true }]}><Input /></Form.Item></Col>
+      <Col span={12}><Form.Item name="parent_name" label="大类名称" rules={[{ required: true }]}><Input /></Form.Item></Col>
+    </Row>
+    <Row gutter={16}>
+      <Col span={12}><Form.Item name="type_code" label="项目代码" rules={[{ required: true }]}><Input disabled={!!editingId} /></Form.Item></Col>
+      <Col span={12}><Form.Item name="type_name" label="项目名称" rules={[{ required: true }]}><Input /></Form.Item></Col>
+    </Row>
+
+    {/* 💡 新增：年审和材料天数配置 */}
+    <Row gutter={16}>
+      <Col span={12}>
+        <Form.Item name="remind_days" label="年审预警提前(天)" initialValue={30}>
+          <InputNumber style={{ width: '100%' }} min={0} />
+        </Form.Item>
+      </Col>
+      <Col span={12}>
+        <Form.Item name="material_days" label="材料起草时限(天)" initialValue={7}>
+          <InputNumber style={{ width: '100%' }} min={0} />
+        </Form.Item>
+      </Col>
+    </Row>
+
+    <Form.Item name="description" label="项目描述"><Input.TextArea rows={2} /></Form.Item>
+    
+    <Row gutter={16}>
+      <Col span={12}><Form.Item name="sort" label="排序" initialValue={0}><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+      <Col span={12}><Form.Item name="is_active" label="状态" valuePropName="checked" initialValue={true}><Switch checkedChildren="启用" unCheckedChildren="禁用" /></Form.Item></Col>
+    </Row>
+  </Form>
+</Modal>
     </Space>
   );
 };

@@ -3,13 +3,13 @@ import { Card, Form, Input, Select, TreeSelect, Button, Upload, Space, message, 
 import { UploadOutlined, SendOutlined, SaveOutlined } from '@ant-design/icons';
 import { Editor, Toolbar } from '@wangeditor/editor-for-react';
 import { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor';
-import { publishNotice } from '../../../services/notification';
+import { saveNotification } from '../../../services/notification';
 import request from '../../../utils/request'; // 假设你有一个基础请求工具
 import '@wangeditor/editor/dist/css/style.css';
 
 const { Option } = Select;
 
-const NotificationPublish: React.FC = () => {
+const NotificationCreate: React.FC = () => {
   const [form] = Form.useForm();
   const [editor, setEditor] = useState<IDomEditor | null>(null);
   const [html, setHtml] = useState('');
@@ -93,7 +93,7 @@ const NotificationPublish: React.FC = () => {
         status: 1, // 1表示直接发布
       };
 
-      const res = await publishNotice(payload);
+      const res = await saveNotification(payload);
       if (res) {
         message.success('通知发布成功！');
         form.resetFields();
@@ -215,4 +215,4 @@ const NotificationPublish: React.FC = () => {
   );
 };
 
-export default NotificationPublish;
+export default NotificationCreate;
