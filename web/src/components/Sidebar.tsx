@@ -55,7 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, activeKey }) => {
         <div className="modern-logo-mark" />
         {!collapsed && (
           <div className="modern-logo-text">
-            <Text strong style={{ fontSize: 16 }}>寻梦</Text>
+            <Text strong style={{ fontSize: 16 }}>寻梦1</Text>
           </div>
         )}
       </div>

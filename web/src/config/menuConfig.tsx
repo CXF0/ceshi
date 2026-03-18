@@ -8,7 +8,16 @@ import {
   TeamOutlined,
   BellOutlined,
   SafetyCertificateOutlined,
-  BankOutlined
+  BankOutlined,
+  CopyOutlined,
+  BookOutlined,
+  VerifiedOutlined,
+  TagsOutlined,
+  SoundOutlined,
+  MailOutlined,
+  AuditOutlined,
+  FileSearchOutlined,
+  UserSwitchOutlined
 } from '@ant-design/icons';
 
 export interface MenuItem {
@@ -28,31 +37,31 @@ export const menuConfig: MenuItem[] = [
   },
   { 
     key: 'crm_group', 
-    icon: <TeamOutlined />, 
+    icon: <UserSwitchOutlined />, 
     label: '客户管理', 
     roles: ['admin', 'manager'],
     children: [
-      { key: '/crm', label: '客户列表' },
+      { key: '/crm', icon: <TeamOutlined />, label: '客户列表' },
     ]
   },
   { 
     key: 'contract_group', 
-    icon: <ShoppingOutlined />, 
+    icon: <CopyOutlined />, 
     label: '合同管理', 
     roles: ['admin', 'auditor'],
     children: [
-      { key: '/contract', label: '合同列表' },
+      { key: '/contract', icon: <FileSearchOutlined />,label: '合同列表' },
     ]
   },
   { 
     key: '/certificates', // 
-    icon: <BankOutlined />, 
+    icon: <BookOutlined />, 
     label: '证书管理', 
     roles: ['admin', 'auditor'] 
   },
   { 
     key: '/institutions', // 💡 已统一为复数，确保与 App.tsx 路由一致
-    icon: <BankOutlined />, 
+    icon: <VerifiedOutlined />, 
     label: '机构管理', 
     roles: ['admin', 'auditor'] 
   },
@@ -64,12 +73,12 @@ export const menuConfig: MenuItem[] = [
     children: [
       { 
         key: '/system/certification', 
-        icon: <SafetyCertificateOutlined />, 
+        icon: <AuditOutlined />, 
         label: '认证类型' 
       },
       { 
         key: '/system/notification', 
-        icon: <BellOutlined />, 
+        icon: <MailOutlined />, 
         label: '通知管理' 
       },
     ]

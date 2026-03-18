@@ -31,7 +31,6 @@ const GlobalOverview: React.FC<{ user: any }> = memo(({ user }) => {
     };
     fetchNotice();
   }, []);
-
   // 跳转详情页逻辑
   const goToDetail = () => {
     if (latestNotice?.id) {
