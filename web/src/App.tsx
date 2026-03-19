@@ -29,6 +29,7 @@ import InstitutionList from './pages/institutions/institutionList';
 import NotificationList from './pages/system/notification/NotificationList';
 import NotificationDetail from './pages/system/notification/detail'; // 阅读页
 import NotificationCreate from './pages/system/notification/NotificationCreate'; // 发布/编辑页
+import nprogress from './utils/nprogress';
 
 const { Header, Content, Sider } = Layout;
 
@@ -57,7 +58,23 @@ const AppLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  
+  useEffect(() => {
+    // 💡 优化：如果是从 / 重定向到 /dashboard，避免无谓的闪烁
+  if (location.pathname === '/') return;
+    // 1. 路由开始变化：启动进度条
+    nprogress.start();
+
+    // 2. 路由渲染完成：结束进度条
+    nprogress.done();
+
+    // 3. 页面切换自动回顶（增强体验）
+    window.scrollTo(0, 0);
+
+    // 清理函数
+    return () => {
+      nprogress.done();
+    };
+  }, [location.pathname]); // 核心：监听路径变化
   // 标签页状态
   const [panes, setPanes] = useState<{ label: string; key: string; closable?: boolean }[]>([
     { label: '业务看板', key: '/dashboard', closable: false }
@@ -152,6 +169,7 @@ const AppLayout: React.FC = () => {
     </Layout>
   );
 };
+
 
 const App: React.FC = () => {
   return (

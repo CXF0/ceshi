@@ -45,7 +45,8 @@ export class AuthService {
       username: user.username, 
       sub: user.id, 
       deptId: user.deptId, 
-      roleKey: user.roleKey 
+      roleKey: user.roleKey,
+      roleName: user.roleName 
     };
 
     return {
@@ -55,7 +56,8 @@ export class AuthService {
         username: user.username, 
         nickname: user.nickname,
         deptId: user.deptId, 
-        roleKey: user.roleKey
+        roleKey: user.roleKey,
+        roleName: user.roleName
       }
     };
   }

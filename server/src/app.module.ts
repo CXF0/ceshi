@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule'; // 💡 1. 引入调度模块
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ContractModule } from './contract/contract.module';
-import { CrmModule } from './crm/crm.module'; // 引入你的新 CRM 模块
+import { CrmModule } from './crm/crm.module';
 import { UploadController } from './common/upload.controller';
 import { InstitutionsModule } from './institutions/institution.module';
 import { CertTypesModule } from './cert-types/cert-types.module';
@@ -13,7 +14,10 @@ import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
-    // 1. 数据库基础配置
+    // 💡 2. 启用定时任务调度器 (必须调用 forRoot)
+    ScheduleModule.forRoot(),
+
+    // 数据库基础配置
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: '121.43.138.82',
@@ -21,7 +25,6 @@ import { NotificationsModule } from './notifications/notifications.module';
       username: 'www_zhengdatong',
       password: 'Chenzi@911',
       database: 'www_zhengdatong',
-      // 💡 建议改成自动扫描，这样你加了 CrmCustomer 实体不用手动在这里注册
       entities: [__dirname + '/**/*.entity{.ts,.js}'], 
       synchronize: false, 
       logging: true,
@@ -29,7 +32,7 @@ import { NotificationsModule } from './notifications/notifications.module';
       connectorPackage: 'mysql2',
     }),
 
-    // 2. 业务功能模块挂载
+    // 业务功能模块
     AuthModule,
     UsersModule,
     CrmModule,
@@ -40,7 +43,6 @@ import { NotificationsModule } from './notifications/notifications.module';
     DashboardModule,
     NotificationsModule,
   ],
-  // 3. 💡 控制器必须放在这里！
   controllers: [
     UploadController, 
   ],

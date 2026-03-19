@@ -114,9 +114,9 @@ const CertificateList: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div>
       <Card 
-        title="证书台账管理" 
+        title="证书管理" 
         bordered={false}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => {

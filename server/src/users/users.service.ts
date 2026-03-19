@@ -12,23 +12,17 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
-    // 💡 建议在 UsersModule 中也引入 Dept 实体，或者这里注入一个通用的连接来查询部门
-    // 如果没有 DeptRepository，可以通过 usersRepository 聚合查询，但推荐注入专门的 Repository
   ) {}
 
   /**
-   * ✨ 获取组织架构树 (用于定向发布选择器)
-   * 返回结构：[ { title: '部门', value: 'dept-1', children: [ { title: '用户', value: 'user-1' } ] } ]
+   * ✨ 获取组织架构树
    */
   async getOrgTree(): Promise<any[]> {
-    // 1. 获取所有用户
     const users = await this.usersRepository.find({
       select: ['id', 'nickname', 'deptId'],
-      where: { status: 1 } // 仅查询启用状态的用户
+      where: { status: 1 }
     });
 
-    // 2. 模拟部门数据（或者从数据库查询）
-    // 对应你之前提供的部门列表
     const depts = [
       { id: 1, name: '寻梦控股昆明分公司' },
       { id: 2, name: '寻梦认证成都分公司' },
@@ -37,17 +31,14 @@ export class UsersService {
       { id: 5, name: '寻梦控股宣城总公司' },
     ];
 
-    // 3. 获取所有角色（可选：如果需要定向到角色）
     const roles = await this.roleRepository.find({ select: ['id', 'roleName', 'roleKey'] });
 
-    // 4. 构建树形结构
     const treeData = depts.map(dept => {
-      // 筛选属于该部门的用户
       const deptUsers = users
         .filter(user => user.deptId === dept.id)
         .map(user => ({
           title: `👤 ${user.nickname}`,
-          value: `user-${user.id}`, // 加前缀区分类型
+          value: `user-${user.id}`,
           key: `user-${user.id}`,
           isLeaf: true,
         }));
@@ -60,7 +51,6 @@ export class UsersService {
       };
     });
 
-    // 5. 额外：在顶层加入按“角色”筛选的分类（如果需要）
     const roleNodes = {
       title: '按角色群发',
       value: 'role-group',
@@ -77,26 +67,30 @@ export class UsersService {
   }
 
   /**
-   * 登录查询 - 已适配去冗余化
+   * 💡 修正点：登录查询 - 补全 roleName 挂载
    */
   async findOne(username: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({
       where: { username },
+      // 确保 nickname 被选中
       select: ['id', 'username', 'password', 'nickname', 'deptId', 'status'],
       relations: ['roles'],
     });
 
     if (user && user.roles && user.roles.length > 0) {
+      // 💡 关键修正：同时挂载 roleKey 和 roleName
       (user as any).roleKey = user.roles[0].roleKey;
+      (user as any).roleName = user.roles[0].roleName; 
     } else if (user) {
-      (user as any).roleKey = 'user'; 
+      (user as any).roleKey = 'user';
+      (user as any).roleName = '职员';
     }
 
     return user;
   }
 
   /**
-   * 获取所有用户列表
+   * 获取所有用户列表 - 补全角色信息
    */
   async findAll(): Promise<User[]> {
     const users = await this.usersRepository.find({
@@ -108,6 +102,7 @@ export class UsersService {
     return users.map(user => {
       if (user.roles && user.roles.length > 0) {
         (user as any).roleKey = user.roles[0].roleKey;
+        (user as any).roleName = user.roles[0].roleName; // 💡 补全
       }
       return user;
     });
@@ -137,23 +132,21 @@ export class UsersService {
     if (roleIds && roleIds.length > 0) {
       const roles = await this.roleRepository.findBy({ id: In(roleIds) });
       newUser.roles = roles;
-      if (roles && roles.length > 0) {
-        (newUser as any).roleKey = roles[0].roleKey;
-      }
     }
 
     const savedUser: any = await this.usersRepository.save(newUser);
-    
     const { password: _, ...userWithoutPassword } = savedUser;
+
     if (savedUser.roles?.length > 0) {
       (userWithoutPassword as any).roleKey = savedUser.roles[0].roleKey;
+      (userWithoutPassword as any).roleName = savedUser.roles[0].roleName; // 💡 补全
     }
 
     return userWithoutPassword as User;
   }
 
   /**
-   * 更新用户及其角色
+   * 更新用户
    */
   async update(id: number, updateUserDto: any): Promise<User> {
     const { roleIds, password, ...updateData } = updateUserDto;
@@ -177,9 +170,6 @@ export class UsersService {
     if (roleIds && Array.isArray(roleIds)) {
       const roles = await this.roleRepository.findBy({ id: In(roleIds) });
       user.roles = roles;
-      if (roles && roles.length > 0) {
-        (user as any).roleKey = roles[0].roleKey;
-      }
     }
 
     const savedResult: any = await this.usersRepository.save(user);
@@ -187,6 +177,7 @@ export class UsersService {
     
     if (savedResult.roles?.length > 0) {
       (userWithoutPassword as any).roleKey = savedResult.roles[0].roleKey;
+      (userWithoutPassword as any).roleName = savedResult.roles[0].roleName; // 💡 补全
     }
 
     return userWithoutPassword as User;

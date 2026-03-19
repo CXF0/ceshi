@@ -22,8 +22,11 @@ import {
   HomeOutlined
 } from '@ant-design/icons';
 import request from '../../../../utils/request';
-import './index.less';
 import { getNotificationDetail } from '../../../../services/notification';
+// 💡 1. 必须引入样式，否则居中、表格、列表等样式都会失效
+import '@wangeditor/editor/dist/css/style.css'; 
+import './index.less';
+
 const { Title, Text } = Typography;
 
 const NotificationDetail: React.FC = () => {
@@ -52,51 +55,43 @@ const NotificationDetail: React.FC = () => {
   }, [id]);
 
   const fetchDetail = async (noticeId: number) => {
-  try {
-    setLoading(true);
-    // 2. 使用 service 函数
-    const res = await getNotificationDetail(noticeId);
-    
-    // 💡 重点：根据你的 service 拦截器 (response.data)，res 现在就是后端返回的 {code, data, message}
-    if (res && res.code === 200) {
-      setData(res.data);
-      setLikeCount(res.data.likeCount ?? 0);
-    } else {
-      message.error(res?.message || '获取通知详情失败');
+    try {
+      setLoading(true);
+      const res = await getNotificationDetail(noticeId);
+      
+      // 兼容两种数据结构：res.data 或 res 直接是对象
+      const noticeData = res?.data || res;
+      
+      if (noticeData && (res.code === 200 || !res.code)) {
+        setData(noticeData);
+        setLikeCount(noticeData.likeCount ?? 0);
+      } else {
+        message.error(res?.message || '获取通知详情失败');
+      }
+    } catch (error: any) {
+      console.error('Fetch error:', error);
+      message.error('获取通知详情失败');
+    } finally {
+      setLoading(false);
     }
-  } catch (error: any) {
-    console.error('Fetch error:', error);
-    message.error('获取通知详情失败');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleLike = async () => {
     try {
       const nextLikedState = !isLiked;
       
-      // 1. 发起请求
       const res: any = await request(`/notifications/like/${id}`, {
         method: 'POST',
         data: { isLike: nextLikedState }
       });
       
-      console.log('点赞接口返回内容:', res);
-
-      // 2. 这里的判断要包容 200 和 201
-      // NestJS 的 @Post 默认返回 201，如果你的拦截器没把 code 改成 200，这里就会跳过
+      // 兼容 NestJS 默认的 201 状态码
       if (res && (res.code === 200 || res.statusCode === 201 || res.data)) {
-        
-        // 💡 重点：从后端返回的最新 count 中取值
-        // 根据你之前的 Service 逻辑，后端返回的是 { count: 数值 }
         const serverCount = res.data?.count;
         
-        // 3. 强制更新本地状态，触发 UI 重绘
         if (typeof serverCount === 'number') {
           setLikeCount(serverCount);
         } else {
-          // 如果后端没给 count，手动加减
           setLikeCount(prev => nextLikedState ? prev + 1 : Math.max(0, prev - 1));
         }
         
@@ -129,10 +124,9 @@ const NotificationDetail: React.FC = () => {
 
   return (
     <div className="notice-detail-container">
-      {/* 顶部面包屑/返回导航 */}
       <div className="detail-header-nav">
         <Breadcrumb items={[
-          { title: <><HomeOutlined /> 首页</>, href: '/' },
+          { title: <><HomeOutlined /> 首页</>, onClick: () => navigate('/') },
           { title: '通知公告' },
           { title: '正文' }
         ]} />
@@ -147,13 +141,12 @@ const NotificationDetail: React.FC = () => {
       </div>
 
       <Card bordered={false} className="notice-article-card">
-        {/* 文章头部 */}
         <header className="article-header">
           <Title level={2}>{data.title}</Title>
           <div className="article-meta">
             <Space size="middle">
               {renderTypeTag(data.type)}
-              <Text type="secondary"><ClockCircleOutlined /> 发布于：{data.createTime}</Text>
+              <Text type="secondary"><ClockCircleOutlined /> 发布于：{new Date(data.createTime).toLocaleString()}</Text>
               <Text type="secondary"><EyeOutlined /> {data.viewCount} 次浏览</Text>
             </Space>
           </div>
@@ -161,15 +154,19 @@ const NotificationDetail: React.FC = () => {
 
         <Divider />
 
-        {/* 文章正文 */}
+        {/* 💡 2. 这里的 className 和内联补丁是解决居中的关键 */}
         <article className="article-content">
           <div 
-            className="rich-text-body"
+            className="editor-content-view" 
+            style={{ 
+              backgroundColor: '#fff', 
+              padding: '0 10px',
+              overflowWrap: 'break-word'
+            }}
             dangerouslySetInnerHTML={{ __html: data.content }} 
           />
         </article>
 
-        {/* 附件区域 */}
         {data.attachments && data.attachments.length > 0 && (
           <div className="article-attachments">
             <Divider>附件资料</Divider>
@@ -191,7 +188,6 @@ const NotificationDetail: React.FC = () => {
 
         <Divider />
 
-        {/* 底部交互 */}
         <footer className="article-footer">
           <Space direction="vertical" align="center" style={{ width: '100%' }}>
             <Button 
@@ -201,7 +197,14 @@ const NotificationDetail: React.FC = () => {
               icon={isLiked ? <LikeFilled /> : <LikeOutlined />}
               onClick={handleLike}
               className={isLiked ? 'like-btn active' : 'like-btn'}
-              style={{ transition: 'all 0.3s' }}
+              style={{ 
+                height: '46px', 
+                padding: '0 30px', 
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
               点赞 {likeCount}
             </Button>
@@ -211,6 +214,24 @@ const NotificationDetail: React.FC = () => {
           </Space>
         </footer>
       </Card>
+
+      {/* 💡 3. CSS 补丁强制修正图片居中逻辑 */}
+      <style>{`
+        .editor-content-view p {
+          margin: 1em 0;
+        }
+        /* 强制让设置了居中的 P 标签内部元素居中 */
+        .editor-content-view p[style*="text-align: center"] {
+          text-align: center !important;
+        }
+        /* 确保图片是行内块，从而受父级 text-align 控制 */
+        .editor-content-view img {
+          max-width: 100%;
+          display: inline-block; 
+          height: auto;
+          vertical-align: middle;
+        }
+      `}</style>
     </div>
   );
 };

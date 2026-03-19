@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable } from 'typeorm';
-import { Role } from '../role/role.entity'; // 确保路径指向你新建的 role 文件夹
+import { Role } from '../role/role.entity';
 
 @Entity('sys_users')
 export class User {
@@ -27,18 +27,24 @@ export class User {
   @Column({ name: 'dept_id', type: 'int', default: 1, comment: '分公司ID' })
   deptId: number;
 
-  // 📝 建议保留 roleKey 字段用于兼容旧逻辑，或者在迁移完成后彻底移除
-  // @Column({ name: 'role_key', length: 50, default: 'user', comment: '旧版角色标识(兼容用)' })
+  /**
+   * 💡 关键修改 1：移除原本的 roleKey 声明，改为可序列化的虚字段
+   * 虽然不对应数据库列，但声明后，Service 里的赋值才能被 JSON 序列化
+   */
   roleKey: string;
 
-  // 🚀 改造核心：多对多关联
+  /**
+   * 💡 关键修改 2：显式声明 roleName
+   */
+  roleName: string;
+
   @ManyToMany(() => Role, (role) => role.users)
   @JoinTable({
-    name: 'sys_user_roles', // 数据库中间表名
+    name: 'sys_user_roles',
     joinColumn: { name: 'user_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
   })
-  roles: Role[]; // 类型从 any 改为 Role[]
+  roles: Role[];
 
   @CreateDateColumn({ name: 'created_at', comment: '创建时间' })
   createdAt: Date;

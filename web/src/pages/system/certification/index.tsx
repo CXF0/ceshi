@@ -180,9 +180,16 @@ const fetchList = async (searchValues: any = {}) => {
   return (
     <Space direction="vertical" size="middle" style={{ display: 'flex' }}>
       {/* 🔍 查询筛选栏 */}
-      <Card size="small">
-        <Form form={searchForm} layout="inline" onFinish={handleSearch}>
-          <Form.Item name="parent_name" label="所属大类" style={{ width: 220 }}>
+      
+      {/* 📊 数据表格栏 */}
+      <Card 
+        title={<span><ApartmentOutlined style={{ marginRight: 8 }} />认证类型</span>}
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>新增认证类型</Button>
+        }
+      >
+        <Form form={searchForm} layout="inline" onFinish={handleSearch} style={{ marginBottom: 24 }}>
+          <Form.Item name="parent_name" label="" style={{ width: 220 }}>
             <Select placeholder="全部大类" allowClear showSearch>
               {parentOptions.map(name => (
                 <Option key={name} value={name}>{name}</Option>
@@ -190,7 +197,7 @@ const fetchList = async (searchValues: any = {}) => {
             </Select>
           </Form.Item>
           
-          <Form.Item name="is_active" label="状态" style={{ width: 150 }}>
+          <Form.Item name="is_active" label="" style={{ width: 150 }}>
             <Select placeholder="全部状态" allowClear>
               <Option value={1}>启用</Option>
               <Option value={0}>禁用</Option>
@@ -204,15 +211,6 @@ const fetchList = async (searchValues: any = {}) => {
             </Space>
           </Form.Item>
         </Form>
-      </Card>
-
-      {/* 📊 数据表格栏 */}
-      <Card 
-        title={<span><ApartmentOutlined style={{ marginRight: 8 }} />认证类型字典管理</span>}
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>新增认证项</Button>
-        }
-      >
         <Table 
           columns={columns} 
           dataSource={data} 

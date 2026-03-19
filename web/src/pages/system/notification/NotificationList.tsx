@@ -171,10 +171,10 @@ const NotificationList: React.FC = () => {
     <div>
       <Card bordered={false} title="通知公告管理">
         <Form form={queryForm} layout="inline" style={{ marginBottom: 24 }}>
-          <Form.Item name="title" label="标题">
+          <Form.Item name="title" label="">
             <Input placeholder="搜索标题" allowClear onPressEnter={loadData} />
           </Form.Item>
-          <Form.Item name="status" label="状态">
+          <Form.Item name="status" label="">
             <Select placeholder="全部" allowClear style={{ width: 120 }} onChange={loadData}>
               <Option value={0}>草稿</Option>
               <Option value={1}>已发布</Option>

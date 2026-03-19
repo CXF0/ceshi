@@ -154,3 +154,14 @@ html, body, #root {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* 修改顶部进度条的颜色 */
+#nprogress .bar {
+  background: #71ccbc !important; /* 你的主题色 */
+  height: 3px !important;       /* 稍微加厚一点点 */
+}
+
+/* 修改进度条末端的光晕效果颜色 */
+#nprogress .peg {
+  box-shadow: 0 0 10px #71ccbc, 0 0 5px #71ccbc !important;
+}

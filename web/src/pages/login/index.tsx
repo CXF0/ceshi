@@ -9,7 +9,6 @@ export default function Login() {
   const onFinish = async (values: any) => {
     const hide = message.loading('正在登录...', 0);
     try {
-      // 这里的接口地址请根据你后端 NestJS 的实际路径调整
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -20,17 +19,27 @@ export default function Login() {
       hide();
 
       if (response.ok) {
-        // --- 核心修复：必须写入这三个关键信息 ---
-        // 1. 对应 App.tsx 里的 isLogin 检查
+        // --- 1. 存储登录状态和 Token ---
         localStorage.setItem('isLogin', 'true');
-        // 2. 对应 App.tsx 里的 token 检查
         localStorage.setItem('token', data.access_token);
-        // 3. 对应 App.tsx 里的 userInfo (注意大小写)
-        localStorage.setItem('userInfo', JSON.stringify(data.user || { nickname: values.username }));
 
-        message.success('登录成功，欢迎进入正达认证CRMV1.0');
+        // --- 2. 核心修复：确保存储完整的用户信息 ---
+        // 逻辑：如果后端 data.user 存在，则存储。
+        // 注意：data.user 现在应该包含你在后端 UsersService 中补全的 roleName 字段了。
+        if (data.user) {
+          localStorage.setItem('userInfo', JSON.stringify(data.user));
+        } else {
+          // 如果后端没给 user 对象，说明后端接口可能需要检查
+          console.warn('后端登录接口未返回完整的 user 信息');
+          localStorage.setItem('userInfo', JSON.stringify({ 
+            nickname: values.username, 
+            roleName: '未知角色' 
+          }));
+        }
 
-        // --- 核心跳转：确保跳转到 App.tsx 中定义的 /dashboard ---
+        message.success(`欢迎回来，${data.user?.nickname || values.username}`);
+
+        // --- 3. 跳转 ---
         navigate('/dashboard', { replace: true });
         
       } else {

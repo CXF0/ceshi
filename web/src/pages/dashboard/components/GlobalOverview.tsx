@@ -77,7 +77,7 @@ const GlobalOverview: React.FC<{ user: any }> = memo(({ user }) => {
             {getTimeState()}，{user?.nickname || '同事'}。祝你开心每一天！
           </Title>
           <Space split={<Divider type="vertical" />} style={{ color: 'rgba(0, 0, 0, 0.45)' }}>
-            <Badge status="processing" color="#71ccbc" text={roleMap[user?.roleKey] || '职员'} />
+            <Badge status="processing" color="#71ccbc" text={roleMap[user?.roleName] || '职员'} />
             <span>{deptMap[user?.deptId] || '寻梦控股'}</span>
           </Space>
         </Col>
