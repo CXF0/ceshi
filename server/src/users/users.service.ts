@@ -14,9 +14,7 @@ export class UsersService {
     private roleRepository: Repository<Role>,
   ) {}
 
-  /**
-   * ✨ 获取组织架构树
-   */
+  /** ✨ 获取组织架构树 */
   async getOrgTree(): Promise<any[]> {
     const users = await this.usersRepository.find({
       select: ['id', 'nickname', 'deptId'],
@@ -66,53 +64,35 @@ export class UsersService {
     return [...treeData, roleNodes];
   }
 
-  /**
-   * 💡 修正点：登录查询 - 补全 roleName 挂载
-   */
+  /** 根据 ID 查找用户（内部使用） */
+  async findById(id: number): Promise<User | null> {
+    return await this.usersRepository.findOne({
+      where: { id },
+      relations: ['roles'],
+    });
+  }
+
+  /** 根据用户名查找用户 */
   async findOne(username: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({
+    return await this.usersRepository.findOne({
       where: { username },
-      // 确保 nickname 被选中
       select: ['id', 'username', 'password', 'nickname', 'deptId', 'status'],
       relations: ['roles'],
     });
-
-    if (user && user.roles && user.roles.length > 0) {
-      // 💡 关键修正：同时挂载 roleKey 和 roleName
-      (user as any).roleKey = user.roles[0].roleKey;
-      (user as any).roleName = user.roles[0].roleName; 
-    } else if (user) {
-      (user as any).roleKey = 'user';
-      (user as any).roleName = '职员';
-    }
-
-    return user;
   }
 
-  /**
-   * 获取所有用户列表 - 补全角色信息
-   */
+  /** 获取所有用户列表 */
   async findAll(): Promise<User[]> {
-    const users = await this.usersRepository.find({
-      select: ['id', 'username', 'nickname', 'deptId', 'status'],
+    return await this.usersRepository.find({
+      select: ['id', 'username', 'nickname', 'deptId', 'status', 'phone', 'createdAt'],
       relations: ['roles'],
       order: { createdAt: 'DESC' }
     });
-
-    return users.map(user => {
-      if (user.roles && user.roles.length > 0) {
-        (user as any).roleKey = user.roles[0].roleKey;
-        (user as any).roleName = user.roles[0].roleName; // 💡 补全
-      }
-      return user;
-    });
   }
 
-  /**
-   * 注册/新增用户
-   */
+  /** 注册/新增用户 */
   async register(userData: any): Promise<User> {
-    const { username, password, roleIds } = userData;
+    const { username, password, roleIds, ...rest } = userData;
 
     const existingUser = await this.usersRepository.findOne({ where: { username } });
     if (existingUser) {
@@ -122,38 +102,32 @@ export class UsersService {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const newUser = this.usersRepository.create({
-      ...userData,
+    const userInstance = this.usersRepository.create({
+      ...rest,
       username,
       password: hashedPassword,
-      nickname: userData.nickname || username,
-    }) as unknown as User; 
+      nickname: rest.nickname || username,
+    });
 
-    if (roleIds && roleIds.length > 0) {
-      const roles = await this.roleRepository.findBy({ id: In(roleIds) });
-      newUser.roles = roles;
+    if (roleIds?.length > 0) {
+      (userInstance as unknown as User).roles = await this.roleRepository.findBy({ id: In(roleIds) });
     }
 
-    const savedUser: any = await this.usersRepository.save(newUser);
-    const { password: _, ...userWithoutPassword } = savedUser;
-
-    if (savedUser.roles?.length > 0) {
-      (userWithoutPassword as any).roleKey = savedUser.roles[0].roleKey;
-      (userWithoutPassword as any).roleName = savedUser.roles[0].roleName; // 💡 补全
-    }
-
-    return userWithoutPassword as User;
+    // 💡 沿用你验证过不报错的断言方式
+    const savedUser = (await this.usersRepository.save(userInstance)) as unknown as User;
+    
+    const { password: _, ...result } = savedUser as any; 
+    return result as User;
   }
 
-  /**
-   * 更新用户
-   */
+  /** 更新用户 */
   async update(id: number, updateUserDto: any): Promise<User> {
     const { roleIds, password, ...updateData } = updateUserDto;
 
     const user = await this.usersRepository.findOne({
       where: { id },
       relations: ['roles'],
+      select: ['id', 'username', 'password', 'nickname', 'deptId', 'status', 'phone']
     });
 
     if (!user) {
@@ -168,18 +142,20 @@ export class UsersService {
     }
 
     if (roleIds && Array.isArray(roleIds)) {
-      const roles = await this.roleRepository.findBy({ id: In(roleIds) });
-      user.roles = roles;
+      (user as unknown as User).roles = await this.roleRepository.findBy({ id: In(roleIds) });
     }
 
-    const savedResult: any = await this.usersRepository.save(user);
-    const { password: _, ...userWithoutPassword } = savedResult;
-    
-    if (savedResult.roles?.length > 0) {
-      (userWithoutPassword as any).roleKey = savedResult.roles[0].roleKey;
-      (userWithoutPassword as any).roleName = savedResult.roles[0].roleName; // 💡 补全
-    }
+    const savedUser = (await this.usersRepository.save(user)) as unknown as User;
 
-    return userWithoutPassword as User;
+    const { password: _, ...result } = savedUser as any;
+    return result as User;
+  }
+
+  /** 删除用户 */
+  async remove(id: number): Promise<void> {
+    const result = await this.usersRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`用户 ID ${id} 不存在`);
+    }
   }
 }

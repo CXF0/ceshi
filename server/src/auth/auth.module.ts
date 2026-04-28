@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module,forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -10,7 +10,8 @@ import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
-    UsersModule, // 认证需要用到 UsersService 来查询用户
+    forwardRef(() => UsersModule),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       global: true, 
       secret: 'zhengda_secret_2026', 
@@ -19,6 +20,6 @@ import { RolesGuard } from './guards/roles.guard';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard, JwtStrategy, RolesGuard],
-  exports: [AuthService],
+  exports: [AuthService,PassportModule, JwtModule],
 })
 export class AuthModule {}

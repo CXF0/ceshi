@@ -29,6 +29,7 @@ import InstitutionList from './pages/institutions/institutionList';
 import NotificationList from './pages/system/notification/NotificationList';
 import NotificationDetail from './pages/system/notification/detail'; // 阅读页
 import NotificationCreate from './pages/system/notification/NotificationCreate'; // 发布/编辑页
+import UserList from './pages/system/users/UserList';
 import nprogress from './utils/nprogress';
 
 const { Header, Content, Sider } = Layout;
@@ -43,6 +44,7 @@ const breadcrumbNameMap: Record<string, string> = {
   '/system/certification': '认证类型',
   '/system/notification': '通知管理',
   '/system/notification/create': '发布公告',
+  '/system/users': '用户管理',
 };
 
 // 2. 动态获取标题函数
@@ -203,6 +205,7 @@ const App: React.FC = () => {
               <Route path="/system/notification" element={<NotificationList />} />
               <Route path="/system/notification/create" element={<NotificationCreate />} />
               <Route path="/system/notification/detail/:id" element={<NotificationDetail />} />
+              <Route path="/system/users" element={<UserList />} />
               
               {/* 根路径重定向 */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

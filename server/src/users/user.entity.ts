@@ -1,4 +1,13 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable } from 'typeorm';
+import { 
+  Entity, 
+  Column, 
+  PrimaryGeneratedColumn, 
+  CreateDateColumn, 
+  UpdateDateColumn, 
+  ManyToMany, 
+  JoinTable,
+  AfterLoad
+} from 'typeorm';
 import { Role } from '../role/role.entity';
 
 @Entity('sys_users')
@@ -27,15 +36,16 @@ export class User {
   @Column({ name: 'dept_id', type: 'int', default: 1, comment: '分公司ID' })
   deptId: number;
 
-  /**
-   * 💡 关键修改 1：移除原本的 roleKey 声明，改为可序列化的虚字段
-   * 虽然不对应数据库列，但声明后，Service 里的赋值才能被 JSON 序列化
-   */
+  /** 💡 虚字段：所有角色的 Key 数组，用于前端权限判断 */
+  roleKeys: string[];
+
+  /** 💡 虚字段：所有角色的名称字符串（逗号分隔），用于前端表格展示 */
+  roleNames: string;
+
+  /** 💡 兼容旧字段：取第一个角色的 Key */
   roleKey: string;
 
-  /**
-   * 💡 关键修改 2：显式声明 roleName
-   */
+  /** 💡 兼容旧字段：取第一个角色的名称 */
   roleName: string;
 
   @ManyToMany(() => Role, (role) => role.users)
@@ -51,4 +61,21 @@ export class User {
 
   @UpdateDateColumn({ name: 'updated_at', comment: '更新时间' })
   updatedAt: Date;
+
+  @AfterLoad()
+  handleRoleMapping() {
+    if (this.roles && this.roles.length > 0) {
+      this.roleKeys = this.roles.map(role => role.roleKey);
+      this.roleNames = this.roles.map(role => role.roleName).join(', ');
+      
+      // 兼容单体逻辑
+      this.roleKey = this.roles[0].roleKey;
+      this.roleName = this.roles[0].roleName;
+    } else {
+      this.roleKeys = [];
+      this.roleNames = '暂无角色';
+      this.roleKey = 'user';
+      this.roleName = '职员';
+    }
+  }
 }

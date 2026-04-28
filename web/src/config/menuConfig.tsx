@@ -17,7 +17,8 @@ import {
   MailOutlined,
   AuditOutlined,
   FileSearchOutlined,
-  UserSwitchOutlined
+  UserSwitchOutlined,
+  UserOutlined
 } from '@ant-design/icons';
 
 export interface MenuItem {
@@ -74,12 +75,20 @@ export const menuConfig: MenuItem[] = [
       { 
         key: '/system/certification', 
         icon: <AuditOutlined />, 
+        roles: ['admin'],
         label: '认证类型' 
       },
       { 
         key: '/system/notification', 
         icon: <MailOutlined />, 
+        roles: ['admin'],
         label: '通知管理' 
+      },
+      { 
+        key: '/system/users', 
+        icon: <UserOutlined />, 
+        roles: ['admin'],
+        label: '用户管理' 
       },
     ]
   },

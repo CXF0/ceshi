@@ -1,14 +1,22 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { PassportModule } from '@nestjs/passport'; // 💡 必须引入这个
 import { User } from './user.entity';
-import { UsersController } from './users.controller'; // 👈 引入新控制器
-import { UsersService } from './users.service';
 import { Role } from '../role/role.entity';
-
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+import { AuthModule } from '../auth/auth.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Role])], // 关键：在此模块注册实体 Repository
+  imports: [
+    TypeOrmModule.forFeature([User, Role,]),
+    forwardRef(() => AuthModule),
+    // 💡 关键修复：导入 PassportModule 并注册默认策略为 'jwt'
+    // 这让 UsersController 能够正确触发 JwtStrategy 的 validate 逻辑
+    PassportModule.register({ defaultStrategy: 'jwt' }), 
+    
+  ],
   providers: [UsersService],
   controllers: [UsersController],
-  exports: [UsersService], // 导出给 AuthModule 等其他模块使用
+  exports: [UsersService],
 })
 export class UsersModule {}
