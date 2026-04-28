@@ -1,167 +1,277 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,700;0,800;1,700;1,800&family=Noto+Sans+SC:wght@400;500;700&display=swap');
 
 /**
  * @file src/index.css
- * @desc 正达认证CRMV1.0
+ * @desc 正达认证CRMV1.0 — 蓝色企业现代风格
+ * 注意：html/body/root 不再强制 overflow:hidden，改由各页面自行控制
  */
 
 :root {
-  --primary-mint: #71ccbc;
-  --glass-bg: rgba(255, 255, 255, 0.7);
+  --primary-blue: #2563eb;
+  --primary-blue-light: #3b82f6;
+  --primary-blue-dim: rgba(37, 99, 235, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --shadow-blue: rgba(37, 99, 235, 0.12);
 }
 
-/* 1. 基础重置：确保全屏画布 */
+/* ─── 1. 基础重置（不再锁定滚动，交给各页面控制） ─── */
 html, body, #root {
   margin: 0;
   padding: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden; /* 禁止浏览器原生滚动条 */
-  background-color: #f0f4f8; /* 浅色底，让毛玻璃显现 */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  width: 100%;
+  min-height: 100vh;
+  font-family: 'Inter', 'Noto Sans SC', -apple-system, sans-serif;
+  /* ❌ 移除全局 overflow:hidden — 官网首页需要滚动 */
 }
 
-/* 2. App 核心容器布局 */
+/* ─── 2. 后台画布容器（仅在后台路由使用，由 App.tsx 套用） ─── */
 .modern-app-canvas {
   width: 100vw;
   height: 100vh;
+  overflow: hidden; /* 仅作用于后台布局容器自身 */
   position: relative;
   display: flex;
   padding: 12px;
   box-sizing: border-box;
+  background:
+    radial-gradient(at 0% 0%,   hsla(225, 100%, 94%, 0.8) 0, transparent 55%),
+    radial-gradient(at 100% 0%, hsla(190, 100%, 92%, 0.7) 0, transparent 55%),
+    radial-gradient(at 50% 100%, hsla(215, 80%, 96%, 0.5) 0, transparent 60%),
+    #f8faff;
 }
 
-/* 背景动态光晕 */
+/* 背景光晕 */
 .bg-glow {
   position: absolute;
-  filter: blur(100px);
+  filter: blur(120px);
   z-index: 0;
-  opacity: 0.4;
+  opacity: 0.35;
+  pointer-events: none;
 }
-.blob-1 { width: 600px; height: 600px; background: var(--primary-mint); top: -150px; right: -100px; border-radius: 50%; }
-.blob-2 { width: 500px; height: 500px; background: #e0f2f1; bottom: -100px; left: -100px; border-radius: 50%; }
+.blob-1 {
+  width: 640px; height: 640px;
+  background: hsla(218, 100%, 88%, 1);
+  top: -180px; right: -120px;
+  border-radius: 50%;
+}
+.blob-2 {
+  width: 520px; height: 520px;
+  background: hsla(190, 90%, 88%, 1);
+  bottom: -120px; left: -120px;
+  border-radius: 50%;
+}
 
-/* 3. 后台主框架：毛玻璃 Layout */
+/* ─── 3. 主框架：毛玻璃 Layout ─── */
 .modern-glass-layout {
   flex: 1;
   height: 100%;
   background: var(--glass-bg) !important;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.04),
+    0 20px 60px -10px rgba(37, 99, 235, 0.06);
   z-index: 1;
   overflow: hidden;
   display: flex !important;
 }
 
-/* 4. 侧边栏样式 */
+/* ─── 4. 侧边栏 ─── */
 .modern-sider {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border-right: 1px solid rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-right: 1px solid rgba(37, 99, 235, 0.06) !important;
 }
 
 .modern-logo-section {
-  padding: 24px 16px;
+  padding: 20px 16px 16px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.05);
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .modern-logo-mark {
-  width: 32px; height: 32px;
-  background: var(--primary-mint);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(113, 204, 188, 0.4);
+  width: 34px; height: 34px;
+  background: var(--primary-blue);
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  flex-shrink: 0;
+}
+
+.modern-logo-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  color: var(--primary-blue);
+  line-height: 1.2;
 }
 
 .sider-menu-container {
   flex: 1;
   overflow-y: auto;
-  padding: 0 8px 20px;
+  padding: 4px 8px 20px;
 }
 
-.modern-menu { background: transparent !important; border: none !important; }
+.modern-menu {
+  background: transparent !important;
+  border: none !important;
+}
 
-/* 5. 顶部 Header 与 胶囊页签 */
+.modern-menu .ant-menu-item,
+.modern-menu .ant-menu-submenu-title {
+  border-radius: 10px !important;
+  margin: 2px 0 !important;
+  font-weight: 500;
+  font-size: 13px;
+  color: #4b5563 !important;
+  transition: all 0.2s ease;
+}
+.modern-menu .ant-menu-item:hover,
+.modern-menu .ant-menu-submenu-title:hover {
+  background: var(--primary-blue-dim) !important;
+  color: var(--primary-blue) !important;
+}
+.modern-menu .ant-menu-item-selected {
+  background: var(--primary-blue-dim) !important;
+  color: var(--primary-blue) !important;
+  font-weight: 700;
+}
+.modern-menu .ant-menu-item-selected::after { display: none !important; }
+
+/* ─── 5. 顶部 Header ─── */
 .modern-header {
-  height: 64px !important;
+  height: 60px !important;
   padding: 0 24px !important;
   display: flex !important;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255, 255, 255, 0.3) !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  background: rgba(255, 255, 255, 0.55) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.06);
 }
 
+/* ─── 6. 标签页 ─── */
 .modern-tabs-bar {
   height: 48px;
   background: rgba(255, 255, 255, 0.4);
   padding: 0 16px;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.05);
 }
 
-/* 极简页签样式定制 */
 .custom-page-tabs .ant-tabs-nav { margin: 0 !important; }
 .custom-page-tabs .ant-tabs-nav::before { display: none !important; }
 .custom-page-tabs .ant-tabs-tab {
   background: transparent !important;
   border: none !important;
-  padding: 6px 16px !important;
+  padding: 5px 14px !important;
   border-radius: 8px !important;
-  transition: all 0.3s;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  color: #6b7280 !important;
+  transition: all 0.25s;
+}
+.custom-page-tabs .ant-tabs-tab:hover {
+  background: var(--primary-blue-dim) !important;
+  color: var(--primary-blue) !important;
 }
 .custom-page-tabs .ant-tabs-tab-active {
-  background: rgba(113, 204, 188, 0.12) !important;
+  background: var(--primary-blue-dim) !important;
 }
 .custom-page-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
-  color: var(--primary-mint) !important;
-  font-weight: 600;
+  color: var(--primary-blue) !important;
+  font-weight: 700 !important;
 }
 
-/* 6. 内容滚动区 */
+/* ─── 7. 内容区 ─── */
 .modern-content {
   flex: 1;
   padding: 24px !important;
-  overflow-y: auto; /* 只有内容区可以滚动 */
-  background: rgba(248, 250, 252, 0.3);
+  overflow-y: auto;
+  background: rgba(248, 250, 255, 0.3);
 }
 
-/* 7. 其他 UI 细节 */
+/* ─── 8. 账户胶囊 ─── */
 .header-account-capsule {
   display: flex;
   align-items: center;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
   height: 36px;
   padding: 0 12px 0 8px;
   border-radius: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.08);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.05);
+  transition: box-shadow 0.2s;
+}
+.header-account-capsule:hover {
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+.user-text {
+  margin: 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a5f;
+  letter-spacing: -0.01em;
+}
+.capsule-divider {
+  width: 1px; height: 16px;
+  background: #e0e7f3;
+  margin-right: 10px;
+}
+.logout-btn { color: #93aac9; cursor: pointer; transition: color 0.2s; }
+.logout-btn:hover { color: #ef4444; }
+
+/* ─── 9. 通用卡片 ─── */
+.bento-card {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  border-radius: 20px;
+  background: white;
+}
+.bento-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -10px rgba(37, 99, 235, 0.1);
 }
 
-.user-text { margin: 0 12px; font-size: 13px; font-weight: 600; color: #334155; }
-.capsule-divider { width: 1px; height: 16px; background: #e2e8f0; margin-right: 12px; }
-.logout-btn { color: #94a3b8; cursor: pointer; transition: color 0.2s; }
-.logout-btn:hover { color: #f43f5e; }
-
-/* 页面入场动画 */
+/* ─── 10. 入场动画 ─── */
 .fade-in {
-  animation: fadeIn 0.4s ease-out;
+  animation: fadeIn 0.35s ease-out;
 }
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* 修改顶部进度条的颜色 */
+/* ─── 11. NProgress ─── */
 #nprogress .bar {
-  background: #71ccbc !important; /* 你的主题色 */
-  height: 3px !important;       /* 稍微加厚一点点 */
+  background: var(--primary-blue) !important;
+  height: 3px !important;
+}
+#nprogress .peg {
+  box-shadow: 0 0 10px var(--primary-blue), 0 0 5px var(--primary-blue) !important;
 }
 
-/* 修改进度条末端的光晕效果颜色 */
-#nprogress .peg {
-  box-shadow: 0 0 10px #71ccbc, 0 0 5px #71ccbc !important;
+/* ─── 12. Ant Design 补充覆盖 ─── */
+.ant-btn-primary {
+  background: var(--primary-blue) !important;
+  border-color: var(--primary-blue) !important;
+  font-weight: 700;
 }
+.ant-btn-primary:hover {
+  background: var(--primary-blue-light) !important;
+  border-color: var(--primary-blue-light) !important;
+}
+
+/* ─── 13. 滚动条美化 ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(37, 99, 235, 0.18); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(37, 99, 235, 0.35); }

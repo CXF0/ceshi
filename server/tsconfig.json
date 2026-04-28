@@ -22,5 +22,11 @@
     "strictBindCallApply": false,
     "types": ["node", "multer"],
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/dept/Dept.module.ts",
+    "src/dept/Dept.service.ts"
+  ]
 }

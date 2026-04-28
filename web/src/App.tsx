@@ -1,23 +1,25 @@
 /**
  * @file src/App.tsx
- * @version 2.2.3 [2026-03-18]
- * @desc 优化路由权重，支持通知公告全流程（列表、发布、详情）的 Tabs 集成。
+ * @version 2.4.0 [2026-04-28]
+ * @desc 路由更新：根路径 / 指向官网首页，登录改为弹窗形式，移除独立 /login 路由。
  */
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate, Outlet } from 'react-router-dom';
 import {
-  UserOutlined, LogoutOutlined, BellOutlined, MenuFoldOutlined, 
-  MenuUnfoldOutlined, HomeOutlined
+  HashRouter, Routes, Route, useNavigate, useLocation, Navigate, Outlet
+} from 'react-router-dom';
+import {
+  UserOutlined, LogoutOutlined, BellOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined, HomeOutlined
 } from '@ant-design/icons';
 import {
-  Layout, ConfigProvider, Button, Space, Badge, Avatar, Typography, message, Breadcrumb, Tabs
+  Layout, ConfigProvider, Button, Space, Badge, Avatar, Breadcrumb, Tabs
 } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import './App.css';
 
-// 导入页面组件
+// 页面组件
 import Sidebar from './components/Sidebar';
-import Login from './pages/login'; 
+import Homepage from './pages/homepage';           // ← 官网首页
 import Dashboard from './pages/dashboard';
 import CustomerList from './pages/crm';
 import ContractList from './pages/contract';
@@ -27,28 +29,29 @@ import CertificationList from './pages/system/certification';
 import CertificationDetail from './pages/system/certification/detail';
 import InstitutionList from './pages/institutions/institutionList';
 import NotificationList from './pages/system/notification/NotificationList';
-import NotificationDetail from './pages/system/notification/detail'; // 阅读页
-import NotificationCreate from './pages/system/notification/NotificationCreate'; // 发布/编辑页
+import NotificationDetail from './pages/system/notification/detail';
+import NotificationCreate from './pages/system/notification/NotificationCreate';
 import UserList from './pages/system/users/UserList';
+import RoleList from './pages/system/roles/RoleList';
 import nprogress from './utils/nprogress';
 
 const { Header, Content, Sider } = Layout;
 
-// 1. 面包屑与标签页名称映射
-const breadcrumbNameMap: Record<string, string> = {
-  '/dashboard': '业务看板',
-  '/crm': '客户管理',
-  '/contract': '合同管理',
-  '/certificates': '证书管理',
-  '/institutions': '机构管理',
-  '/system/certification': '认证类型',
-  '/system/notification': '通知管理',
-  '/system/notification/create': '发布公告',
-  '/system/users': '用户管理',
+// ─── 面包屑名称映射 ───
+export const breadcrumbNameMap: Record<string, string> = {
+  '/dashboard':                    '业务看板',
+  '/crm':                          '客户管理',
+  '/contract':                     '合同管理',
+  '/certificates':                 '证书管理',
+  '/institutions':                 '机构管理',
+  '/system/certification':         '认证类型',
+  '/system/notification':          '通知管理',
+  '/system/notification/create':   '发布公告',
+  '/system/users':                 '用户管理',
+  '/system/roles':                 '角色管理',   // ← 新增
 };
 
-// 2. 动态获取标题函数
-const getBreadcrumbTitle = (path: string) => {
+export const getBreadcrumbTitle = (path: string) => {
   if (breadcrumbNameMap[path]) return breadcrumbNameMap[path];
   if (path.startsWith('/system/certification/')) return '认证详情';
   if (path.startsWith('/contract/')) return '合同详情';
@@ -56,67 +59,51 @@ const getBreadcrumbTitle = (path: string) => {
   return '当前页面';
 };
 
+// ─── 后台管理布局（需登录） ───
 const AppLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
   useEffect(() => {
-    // 💡 优化：如果是从 / 重定向到 /dashboard，避免无谓的闪烁
-  if (location.pathname === '/') return;
-    // 1. 路由开始变化：启动进度条
+    if (location.pathname === '/') return;
     nprogress.start();
-
-    // 2. 路由渲染完成：结束进度条
     nprogress.done();
-
-    // 3. 页面切换自动回顶（增强体验）
     window.scrollTo(0, 0);
+    return () => { nprogress.done(); };
+  }, [location.pathname]);
 
-    // 清理函数
-    return () => {
-      nprogress.done();
-    };
-  }, [location.pathname]); // 核心：监听路径变化
-  // 标签页状态
   const [panes, setPanes] = useState<{ label: string; key: string; closable?: boolean }[]>([
     { label: '业务看板', key: '/dashboard', closable: false }
   ]);
   const activeKey = location.pathname;
 
-  // 3. 标签页自动同步逻辑
   useEffect(() => {
     const { pathname } = location;
-    
-    // 排除无需显示在 Tabs 中的页面
-    if (pathname === '/' || pathname === '/login' || pathname === '') return;
-
-    setPanes((prev) => {
-      // 如果标签页不存在，则添加
+    if (['/login', '/'].includes(pathname)) return;
+    setPanes(prev => {
       if (!prev.find(p => p.key === pathname)) {
-        const title = getBreadcrumbTitle(pathname);
-        return [...prev, { label: title, key: pathname }];
+        return [...prev, { label: getBreadcrumbTitle(pathname), key: pathname }];
       }
       return prev;
     });
   }, [location]);
 
-  // 4. 关闭标签页逻辑
   const onTabEdit = (targetKey: any, action: 'add' | 'remove') => {
     if (action === 'remove') {
       const index = panes.findIndex(p => p.key === targetKey);
       const newPanes = panes.filter(p => p.key !== targetKey);
       setPanes(newPanes);
       if (targetKey === activeKey) {
-        // 关闭当前页后跳转至前一页或首页
         navigate(newPanes[index - 1]?.key || newPanes[0].key);
       }
     }
   };
 
-  // 5. 基础登录校验
+  // 未登录则返回官网首页
   const isLogin = localStorage.getItem('isLogin') === 'true';
   const token = localStorage.getItem('token');
-  if (!isLogin || !token) return <Navigate to="/login" replace />;
+  if (!isLogin || !token) return <Navigate to="/" replace />;
 
   const userInfo = (() => {
     try { return JSON.parse(localStorage.getItem('userInfo') || '{}'); } catch { return {}; }
@@ -124,47 +111,68 @@ const AppLayout: React.FC = () => {
 
   return (
     <Layout className="modern-glass-layout">
-      <Sider width={240} trigger={null} collapsible collapsed={collapsed} className="modern-sider">
-        <Sidebar collapsed={collapsed} activeKey={activeKey} />
+      <Sider width={220} trigger={null} collapsible collapsed={collapsed} className="modern-sider">
+        <div className="modern-logo-section">
+          <div className="modern-logo-mark" />
+          {!collapsed && (
+            <div className="modern-logo-text">
+              正达认证
+              <br />
+              <span style={{ fontSize: 10, fontWeight: 400, color: '#93aac9', fontStyle: 'normal', letterSpacing: '0.05em' }}>
+                CRM V1.0
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="sider-menu-container">
+          <Sidebar collapsed={collapsed} activeKey={activeKey} />
+        </div>
       </Sider>
+
       <Layout style={{ background: 'transparent' }}>
         <Header className="modern-header">
           <Space>
-            <Button 
-              type="text" 
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} 
-              onClick={() => setCollapsed(!collapsed)} 
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed(!collapsed)}
+              style={{ color: '#4b5563' }}
             />
-            <Breadcrumb items={[{ title: <HomeOutlined /> }, { title: getBreadcrumbTitle(activeKey) }]} />
+            <Breadcrumb
+              items={[{ title: <HomeOutlined style={{ color: '#93aac9' }} /> }, { title: getBreadcrumbTitle(activeKey) }]}
+              style={{ fontSize: 13 }}
+            />
           </Space>
-          <Space size={16}>
-            <Badge count={3} dot color="#71ccbc">
-              <BellOutlined style={{ fontSize: 18, color: '#64748b' }} />
+          <Space size={14}>
+            <Badge count={3} dot color="#2563eb">
+              <BellOutlined style={{ fontSize: 17, color: '#6b7280', cursor: 'pointer' }} />
             </Badge>
             <div className="header-account-capsule">
-              <Avatar size={24} style={{ backgroundColor: '#71ccbc' }} icon={<UserOutlined />} />
+              <Avatar size={24} style={{ backgroundColor: '#2563eb' }} icon={<UserOutlined />} />
               <span className="user-text">{userInfo.nickname || '管理员'}</span>
               <div className="capsule-divider" />
-              <LogoutOutlined className="logout-btn" onClick={() => { localStorage.clear(); navigate('/login'); }} />
+              <LogoutOutlined
+                className="logout-btn"
+                title="退出登录"
+                onClick={() => { localStorage.clear(); navigate('/'); }}
+              />
             </div>
           </Space>
         </Header>
 
-        {/* 顶部标签导航栏 */}
         <div className="modern-tabs-bar">
-          <Tabs 
-            activeKey={activeKey} 
-            items={panes.map(p => ({ label: p.label, key: p.key, closable: p.closable }))} 
-            onChange={(key) => navigate(key)} 
-            onEdit={onTabEdit} 
-            type="editable-card" 
-            hideAdd 
-            className="custom-page-tabs" 
+          <Tabs
+            activeKey={activeKey}
+            items={panes.map(p => ({ label: p.label, key: p.key, closable: p.closable }))}
+            onChange={key => navigate(key)}
+            onEdit={onTabEdit}
+            type="editable-card"
+            hideAdd
+            className="custom-page-tabs"
           />
         </div>
 
-        {/* 主内容区域 */}
-        <Content className="modern-content">
+        <Content className="modern-content fade-in">
           <Outlet />
         </Content>
       </Layout>
@@ -172,49 +180,67 @@ const AppLayout: React.FC = () => {
   );
 };
 
-
+// ─── 根组件 ───
 const App: React.FC = () => {
   return (
-    <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#71ccbc', borderRadius: 12 } }}>
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        token: {
+          colorPrimary: '#2563eb',
+          colorLink: '#2563eb',
+          borderRadius: 10,
+          borderRadiusLG: 14,
+          fontFamily: "'Inter', 'Noto Sans SC', -apple-system, sans-serif",
+          boxShadow: '0 4px 16px -4px rgba(37,99,235,0.12)',
+        },
+        components: {
+          Menu: {
+            itemBorderRadius: 10,
+            itemSelectedBg: 'rgba(37,99,235,0.08)',
+            itemSelectedColor: '#2563eb',
+            itemHoverBg: 'rgba(37,99,235,0.05)',
+            itemHoverColor: '#2563eb',
+          },
+          Button: { primaryShadow: '0 4px 12px rgba(37,99,235,0.25)' },
+          Table: { headerBg: 'rgba(248,250,255,0.9)', borderColor: 'rgba(37,99,235,0.06)' },
+          Card: { borderRadiusLG: 16 },
+        },
+      }}
+    >
       <HashRouter>
-        <div className="modern-app-canvas">
-          <div className="bg-glow blob-1" />
-          <div className="bg-glow blob-2" />
-          
-          <Routes>
-            {/* 登录页独立路由 */}
-            <Route path="/login" element={<Login />} />
-            
-            {/* 嵌套在管理布局下的业务路由 */}
-            <Route element={<AppLayout />}>
-              {/* 首页 */}
-              <Route path="/dashboard" element={<Dashboard data={{ monthlyRevenue: undefined, targetProgress: undefined, followUpList: undefined }} />} />
-              
-              {/* 业务模块 */}
-              <Route path="/crm" element={<CustomerList />} />
-              <Route path="/contract" element={<ContractList />} />
-              <Route path="/contract/:id" element={<ContractDetail />} />
-              <Route path="/certificates" element={<CertificateList />} />
-              <Route path="/institutions" element={<InstitutionList />} />
-              
-              {/* 系统设置 - 认证管理 */}
-              <Route path="/system/certification" element={<CertificationList />} />
-              <Route path="/system/certification/:id" element={<CertificationDetail />} />
-              
-              {/* 系统设置 - 通知公告管理流程 */}
-              <Route path="/system/notification" element={<NotificationList />} />
-              <Route path="/system/notification/create" element={<NotificationCreate />} />
-              <Route path="/system/notification/detail/:id" element={<NotificationDetail />} />
-              <Route path="/system/users" element={<UserList />} />
-              
-              {/* 根路径重定向 */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            </Route>
+        <Routes>
+          {/* ① 官网首页 — 根路径，全屏独立，不套后台容器 */}
+          <Route path="/" element={<Homepage />} />
 
-            {/* 全局兜底重定向 */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </div>
+          {/* ② 后台管理 — 套毛玻璃布局容器 */}
+          <Route
+            element={
+              <div className="modern-app-canvas">
+                <div className="bg-glow blob-1" />
+                <div className="bg-glow blob-2" />
+                <AppLayout />
+              </div>
+            }
+          >
+            <Route path="/dashboard" element={<Dashboard data={{ monthlyRevenue: undefined, targetProgress: undefined, followUpList: undefined }} />} />
+            <Route path="/crm" element={<CustomerList />} />
+            <Route path="/contract" element={<ContractList />} />
+            <Route path="/contract/:id" element={<ContractDetail />} />
+            <Route path="/certificates" element={<CertificateList />} />
+            <Route path="/institutions" element={<InstitutionList />} />
+            <Route path="/system/certification" element={<CertificationList />} />
+            <Route path="/system/certification/:id" element={<CertificationDetail />} />
+            <Route path="/system/notification" element={<NotificationList />} />
+            <Route path="/system/notification/create" element={<NotificationCreate />} />
+            <Route path="/system/notification/detail/:id" element={<NotificationDetail />} />
+            <Route path="/system/users" element={<UserList />} />
+            <Route path="/system/roles" element={<RoleList />} />
+          </Route>
+
+          {/* ③ 兜底 */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </HashRouter>
     </ConfigProvider>
   );

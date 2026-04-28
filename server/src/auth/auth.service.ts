@@ -13,13 +13,6 @@ export class AuthService {
   ) {}
 
   async login(username: string, pass: string) {
-    // 💡 重点 1：这一行会直接打印出当前环境下 123456 的正确密文
-    const currentHash = await bcrypt.hash('123456', 10);
-    
-    console.log('==================================================');
-    console.log('【第一步：请复制下方这串密文去更新数据库 admin 的 password 字段】');
-    console.log(currentHash);
-    console.log('==================================================');
 
     const user = await this.usersService.findOne(username);
     

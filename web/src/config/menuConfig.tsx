@@ -1,95 +1,99 @@
+/**
+ * @file web/src/config/menuConfig.tsx
+ * @version 2.1.0 [2026-04-28]
+ * @desc 菜单配置 - 新增「角色管理」菜单项
+ */
 import React from 'react';
-import { 
-  DesktopOutlined, 
-  FileProtectOutlined, 
-  ShoppingOutlined, 
-  SettingOutlined,
-  PartitionOutlined,
-  TeamOutlined,
-  BellOutlined,
-  SafetyCertificateOutlined,
-  BankOutlined,
+import {
+  DesktopOutlined,
   CopyOutlined,
   BookOutlined,
   VerifiedOutlined,
-  TagsOutlined,
-  SoundOutlined,
-  MailOutlined,
+  SettingOutlined,
   AuditOutlined,
-  FileSearchOutlined,
+  MailOutlined,
+  UserOutlined,
   UserSwitchOutlined,
-  UserOutlined
+  TeamOutlined,
+  FileSearchOutlined,
+  SafetyCertificateOutlined,  // ← 角色管理图标
 } from '@ant-design/icons';
 
 export interface MenuItem {
   key: string;
   label: string;
   icon?: React.ReactNode;
-  roles?: string[]; // 允许访问的角色列表，为空则全员可见
+  roles?: string[];
   children?: MenuItem[];
 }
 
 export const menuConfig: MenuItem[] = [
-  { 
-    key: '/dashboard', 
-    icon: <DesktopOutlined />, 
-    label: '业务看板', 
-    roles: [] 
+  {
+    key: '/dashboard',
+    icon: <DesktopOutlined />,
+    label: '业务看板',
+    roles: [],
   },
-  { 
-    key: 'crm_group', 
-    icon: <UserSwitchOutlined />, 
-    label: '客户管理', 
-    roles: ['admin', 'manager'],
+  {
+    key: 'crm_group',
+    icon: <UserSwitchOutlined />,
+    label: '客户管理',
+    roles: ['admin', 'manager', 'sales'],
     children: [
       { key: '/crm', icon: <TeamOutlined />, label: '客户列表' },
-    ]
+    ],
   },
-  { 
-    key: 'contract_group', 
-    icon: <CopyOutlined />, 
-    label: '合同管理', 
-    roles: ['admin', 'auditor'],
+  {
+    key: 'contract_group',
+    icon: <CopyOutlined />,
+    label: '合同管理',
+    roles: ['admin', 'manager', 'sales', 'consultant', 'reviewer'],
     children: [
-      { key: '/contract', icon: <FileSearchOutlined />,label: '合同列表' },
-    ]
+      { key: '/contract', icon: <FileSearchOutlined />, label: '合同列表' },
+    ],
   },
-  { 
-    key: '/certificates', // 
-    icon: <BookOutlined />, 
-    label: '证书管理', 
-    roles: ['admin', 'auditor'] 
+  {
+    key: '/certificates',
+    icon: <BookOutlined />,
+    label: '证书管理',
+    roles: ['admin', 'manager', 'reviewer'],
   },
-  { 
-    key: '/institutions', // 💡 已统一为复数，确保与 App.tsx 路由一致
-    icon: <VerifiedOutlined />, 
-    label: '机构管理', 
-    roles: ['admin', 'auditor'] 
+  {
+    key: '/institutions',
+    icon: <VerifiedOutlined />,
+    label: '机构管理',
+    roles: ['admin', 'manager'],
   },
-  { 
-    key: 'system', 
-    icon: <SettingOutlined />, 
-    label: '系统设置', 
+  {
+    key: 'system',
+    icon: <SettingOutlined />,
+    label: '系统设置',
     roles: ['admin'],
     children: [
-      { 
-        key: '/system/certification', 
-        icon: <AuditOutlined />, 
+      {
+        key: '/system/certification',
+        icon: <AuditOutlined />,
         roles: ['admin'],
-        label: '认证类型' 
+        label: '认证类型',
       },
-      { 
-        key: '/system/notification', 
-        icon: <MailOutlined />, 
+      {
+        key: '/system/notification',
+        icon: <MailOutlined />,
         roles: ['admin'],
-        label: '通知管理' 
+        label: '通知管理',
       },
-      { 
-        key: '/system/users', 
-        icon: <UserOutlined />, 
+      {
+        key: '/system/users',
+        icon: <UserOutlined />,
         roles: ['admin'],
-        label: '用户管理' 
+        label: '用户管理',
       },
-    ]
+      {
+        key: '/system/roles',                          // ← 新增
+        icon: <SafetyCertificateOutlined />,
+        roles: ['admin'],
+        label: '角色管理',
+      },
+    ],
   },
 ];

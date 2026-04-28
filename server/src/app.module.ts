@@ -1,6 +1,11 @@
+/**
+ * @file server/src/app.module.ts
+ * @version 2.1.0 [2026-04-28]
+ * @desc 修复：补充注册 RoleModule，使 /api/role/* 路由生效
+ */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ScheduleModule } from '@nestjs/schedule'; // 💡 1. 引入调度模块
+import { ScheduleModule } from '@nestjs/schedule';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ContractModule } from './contract/contract.module';
@@ -11,13 +16,13 @@ import { CertTypesModule } from './cert-types/cert-types.module';
 import { CertificatesModule } from './certificates/certificates.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { RoleModule } from './role/role.module';
+import { DeptModule } from './dept/dept.module';    // ← 全小写，修复大小写报错
 
 @Module({
   imports: [
-    // 💡 2. 启用定时任务调度器 (必须调用 forRoot)
     ScheduleModule.forRoot(),
 
-    // 数据库基础配置
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: '121.43.138.82',
@@ -25,16 +30,17 @@ import { NotificationsModule } from './notifications/notifications.module';
       username: 'www_zhengdatong',
       password: 'Chenzi@911',
       database: 'www_zhengdatong',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'], 
-      synchronize: false, 
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: false,
       logging: true,
       timezone: '+08:00',
       connectorPackage: 'mysql2',
     }),
 
-    // 业务功能模块
     AuthModule,
     UsersModule,
+    RoleModule,
+    DeptModule,
     CrmModule,
     ContractModule,
     InstitutionsModule,
@@ -44,7 +50,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     NotificationsModule,
   ],
   controllers: [
-    UploadController, 
+    UploadController,
   ],
 })
 export class AppModule {}

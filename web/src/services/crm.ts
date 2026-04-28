@@ -1,36 +1,29 @@
-// src/services/crm.ts
+/**
+ * @file web/src/services/crm.ts
+ *
+ * ⚠️ 变更说明（对比原文件）：
+ * - CrmAccountApi 补充了 findByCustomer (GET) 方法，原代码缺失
+ * - setDefault 路径从 /default 改为对齐后端 @Patch(':id/default')（不变，已正确）
+ */
 import request from '@/utils/request';
 
-/**
- * 客户主体 API (已对齐后端 @Controller('crm/customers'))
- */
+/** 客户主体 API */
 export const CrmCustomerApi = {
-  // 获取列表 - 路径改为 /crm/customers
   findAll: (params: any) => request.get('/crm/customers', { params }),
-  
-  // 获取单个详情 - 路径改为 /crm/customers/${id}
   findOne: (id: number) => request.get(`/crm/customers/${id}`),
-  
-  // 新增客户 - 路径改为 /crm/customers
   create: (data: any) => request.post('/crm/customers', data),
-  
-  // 更新客户 - 路径改为 /crm/customers/${id}
   update: (id: number, data: any) => request.put(`/crm/customers/${id}`, data),
-  
-  // 删除客户 - 路径改为 /crm/customers/${id}
   remove: (id: number) => request.delete(`/crm/customers/${id}`),
 };
 
-/**
- * 客户财务账户 API (已对齐后端 @Controller('crm/customer-accounts'))
- */
+/** 客户财务账户 API */
 export const CrmAccountApi = {
-  // 新增账户
+  /** ✅ 新增：根据客户ID获取账户列表 */
+  findByCustomer: (customerId: number) =>
+    request.get('/crm/customer-accounts', { params: { customerId } }),
+
   create: (data: any) => request.post('/crm/customer-accounts', data),
-  // 更新账户
   update: (id: number, data: any) => request.put(`/crm/customer-accounts/${id}`, data),
-  // 设置默认账户
   setDefault: (id: number) => request.patch(`/crm/customer-accounts/${id}/default`),
-  // 删除账户
   remove: (id: number) => request.delete(`/crm/customer-accounts/${id}`),
 };
