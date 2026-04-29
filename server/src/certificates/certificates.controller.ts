@@ -1,7 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+/**
+ * @file server/src/certificates/certificates.controller.ts
+ * @version 2.0.0 [2026-04-28]
+ */
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { CertificatesService } from './certificates.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('certificates')
+@UseGuards(JwtAuthGuard)
 export class CertificatesController {
   constructor(private readonly service: CertificatesService) {}
 

@@ -1,60 +1,63 @@
-// server/src/certification/entities/certificate.entity.ts
-import { 
-  Column, 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  CreateDateColumn, 
-  UpdateDateColumn, 
-  ManyToOne, 
-  JoinColumn 
+/**
+ * @file server/src/certificates/entities/certificate.entity.ts
+ * @version 2.0.0 [2026-04-28]
+ * @desc 补充 ManyToOne 关联 CrmCustomer，使 leftJoinAndSelect 生效
+ */
+import {
+  Column, Entity, PrimaryColumn,
+  CreateDateColumn, UpdateDateColumn,
+  ManyToOne, JoinColumn,
 } from 'typeorm';
-import { CertificationType } from '../../cert-types/entities/cert-type.entity'; // 💡 确保路径与你的目录结构一致
+import { CertificationType } from '../../cert-types/entities/cert-type.entity';
+import { CrmCustomer } from '../../crm/crm-customer.entity';
 
 @Entity('certificates')
 export class Certificate {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn({ type: 'varchar', length: 36 })
   id: string;
 
-  @Column({ comment: '关联客户ID' })
+  @Column({ name: 'customer_id', type: 'varchar', comment: '关联客户ID' })
   customer_id: string;
 
-  @Column({ comment: '关联认证类型ID (category_id)' })
+  @Column({ name: 'category_id', type: 'int', comment: '关联认证类型ID' })
   category_id: number;
 
-  @Column({ comment: '证书编号' })
+  @Column({ name: 'certificate_number', type: 'varchar', length: 100, comment: '证书编号' })
   certificate_number: string;
 
-  @Column({ comment: '颁发机构', nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, comment: '颁发机构' })
   issuer: string;
 
-  @Column({ type: 'date', comment: '颁发日期' })
+  @Column({ name: 'issue_date', type: 'date', comment: '颁发日期' })
   issue_date: string;
 
-  @Column({ type: 'date', comment: '到期日期' })
+  @Column({ name: 'expiry_date', type: 'date', comment: '到期日期' })
   expiry_date: string;
 
-  @Column({ 
-    type: 'enum', 
-    enum: ['valid', 'expiring', 'expired', 'revoked'], 
+  @Column({
+    type: 'enum',
+    enum: ['valid', 'expiring', 'expired', 'revoked'],
     default: 'valid',
-    comment: '证书状态' 
+    comment: '状态',
   })
   status: string;
 
-  @Column({ type: 'text', comment: '证书图片地址', nullable: true })
+  @Column({ name: 'file_url', type: 'text', nullable: true, comment: '证书附件' })
   file_url: string;
 
-  /**
-   * 💡 关键补充：定义与认证类型的多对一关系
-   * 只有加上这个，Service 里的 .leftJoinAndSelect('cert.category', 'category') 才能生效
-   */
+  /** 关联认证类型 */
   @ManyToOne(() => CertificationType)
-  @JoinColumn({ name: 'category_id' }) // 指明数据库中对应的列名
+  @JoinColumn({ name: 'category_id' })
   category: CertificationType;
 
-  @CreateDateColumn()
+  /** ✅ 新增：关联客户表，获取客户名称 */
+  @ManyToOne(() => CrmCustomer)
+  @JoinColumn({ name: 'customer_id' })
+  customer: CrmCustomer;
+
+  @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   created_at: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at', type: 'datetime' })
   updated_at: Date;
 }

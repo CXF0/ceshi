@@ -1,7 +1,13 @@
+/**
+ * @file server/src/fin-payments/fin-payments.service.ts
+ * @version 2.0.0 [2026-04-28]
+ * @desc 修复：create 时自动从关联合同取 deptId，解决 dept_id 无默认值报错
+ */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FinPayment } from './fin-payment.entity';
+import { CrmContract } from '../contract/entities/contract.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -9,9 +15,11 @@ export class FinPaymentsService {
   constructor(
     @InjectRepository(FinPayment)
     private readonly repo: Repository<FinPayment>,
+
+    @InjectRepository(CrmContract)
+    private readonly contractRepo: Repository<CrmContract>,
   ) {}
 
-  /** 根据合同ID获取所有回款记录 */
   async findByContract(contractId: string) {
     return this.repo.find({
       where: { contractId },
@@ -19,13 +27,25 @@ export class FinPaymentsService {
     });
   }
 
-  /** 新增回款记录 */
+  /** 新增回款记录：自动从合同取 deptId */
   async create(body: Partial<FinPayment>) {
-    const record = this.repo.create({ ...body, id: uuidv4() });
+    // 如果前端没传 deptId，从合同记录里取
+    let deptId = body.deptId;
+    if (!deptId && body.contractId) {
+      const contract = await this.contractRepo.findOne({
+        where: { id: String(body.contractId) } as any,
+      });
+      deptId = contract?.deptId;
+    }
+
+    const record = this.repo.create({
+      ...body,
+      id: uuidv4(),
+      deptId,
+    });
     return this.repo.save(record);
   }
 
-  /** 更新回款记录（标记收款、开票等） */
   async update(id: string, body: Partial<FinPayment>) {
     const exists = await this.repo.findOne({ where: { id } });
     if (!exists) throw new NotFoundException(`回款记录 ${id} 不存在`);
@@ -33,25 +53,20 @@ export class FinPaymentsService {
     return this.repo.findOne({ where: { id } });
   }
 
-  /** 删除回款记录 */
   async remove(id: string) {
     const result = await this.repo.delete(id);
     if (result.affected === 0) throw new NotFoundException(`回款记录 ${id} 不存在`);
     return { success: true };
   }
 
-  /**
-   * 统计合同回款汇总（用于 Dashboard）
-   * 返回：总应收、总实收、未收金额、已开票数
-   */
   async getSummaryByContract(contractId: string) {
     const payments = await this.findByContract(contractId);
     return {
-      totalDue: payments.reduce((s, p) => s + p.amountDue, 0),
-      totalPaid: payments.reduce((s, p) => s + p.amountPaid, 0),
-      totalUnpaid: payments.reduce((s, p) => s + (p.amountDue - p.amountPaid), 0),
+      totalDue:      payments.reduce((s, p) => s + p.amountDue, 0),
+      totalPaid:     payments.reduce((s, p) => s + p.amountPaid, 0),
+      totalUnpaid:   payments.reduce((s, p) => s + (p.amountDue - p.amountPaid), 0),
       invoicedCount: payments.filter(p => p.isInvoiced).length,
-      phases: payments,
+      phases:        payments,
     };
   }
 }

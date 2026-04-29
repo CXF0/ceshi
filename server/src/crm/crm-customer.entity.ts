@@ -1,68 +1,70 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+/**
+ * @file server/src/crm/crm-customer.entity.ts
+ * @version 2.0.0 [2026-04-28]
+ * @desc 新增 status（状态）字段 + deletedAt（软删除）字段
+ */
+import {
+  Entity, Column, PrimaryGeneratedColumn, OneToMany,
+  CreateDateColumn, UpdateDateColumn, DeleteDateColumn,
+} from 'typeorm';
 import { CrmCustomerAccount } from './crm-customer-account.entity';
 
-/**
- * 对应数据库表：crm_customers
- *
- * ⚠️ 关键修正（对比原代码）：
- * 1. dept_id 在数据库里是 char(36) → 对应 string 类型 ✅（已修正）
- * 2. 数据库有 created_at / updated_at 字段，原 Entity 缺失 → 已补充
- * 3. scale_count 在 DB 中是 int，原代码已正确
- */
 @Entity('crm_customers')
 export class CrmCustomer {
-  @PrimaryGeneratedColumn({ comment: '主键ID' })
+  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'dept_id', type: 'char', length: 36, comment: '所属分部ID' })
+  @Column({ name: 'dept_id', type: 'char', length: 36 })
   deptId: string;
 
-  @Column({ length: 200, comment: '企业全称' })
+  @Column({ length: 200 })
   name: string;
 
-  @Column({ name: 'usci_code', length: 18, nullable: true, comment: '统一社会信用代码' })
+  @Column({ name: 'usci_code', length: 18, nullable: true })
   usciCode: string;
 
-  @Column({
-    name: 'industry',
-    length: 50,
-    default: 'other',
-    comment: '行业: agriculture-农林牧渔, manufacturing-制造业, wholesale-批发零售, tech-信息技术, other-其他',
-  })
+  @Column({ name: 'industry', length: 100, default: 'other' })
   industry: string;
 
-  @Column({
-    name: 'level',
-    length: 20,
-    default: 'common',
-    comment: '等级: vip-VIP, common-普通, channel-渠道',
-  })
+  @Column({ name: 'level', length: 20, default: 'common' })
   level: string;
 
-  @Column({ name: 'contact_person', length: 50, nullable: true, comment: '联系人' })
-  contactPerson: string;
-
-  @Column({ name: 'contact_phone', length: 20, nullable: true, comment: '联系电话' })
-  contactPhone: string;
-
-  @Column({
-    length: 50,
-    nullable: true,
-    comment: '客户来源: 老客户推荐, 电销获客, 网络获客, 渠道推荐, 业务拜访, 其他',
-  })
-  source: string;
-
-  @Column({ length: 500, nullable: true, comment: '详细地址' })
-  address: string;
-
-  @Column({ name: 'scale_count', type: 'int', default: 0, comment: '人员规模' })
+  @Column({ name: 'scale_count', type: 'int', default: 0 })
   scaleCount: number;
 
-  @CreateDateColumn({ name: 'created_at', type: 'datetime', nullable: true })
+  @Column({ nullable: true })
+  address: string;
+
+  @Column({ name: 'contact_person', length: 50, nullable: true })
+  contactPerson: string;
+
+  @Column({ name: 'contact_phone', length: 20, nullable: true })
+  contactPhone: string;
+
+  @Column({ length: 50, nullable: true })
+  source: string;
+
+  /**
+   * 状态：1-正常，0-禁用
+   * 禁用后在列表中仍可查看（通过状态筛选），不影响历史合同数据
+   */
+  @Column({ default: 1, comment: '状态：1-正常，0-禁用' })
+  status: number;
+
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'datetime', nullable: true })
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  /**
+   * 软删除时间戳
+   * TypeORM 的 @DeleteDateColumn 装饰器会自动：
+   * - softDelete() 时写入当前时间
+   * - 所有 find/findOne 查询自动加上 WHERE deleted_at IS NULL
+   */
+  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
+  deletedAt: Date;
 
   @OneToMany(() => CrmCustomerAccount, (account) => account.customer)
   accounts: CrmCustomerAccount[];

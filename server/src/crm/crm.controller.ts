@@ -1,66 +1,64 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Put,
-  Param,
-  Body, 
-  Query, 
-  UseGuards, 
-  Req 
+/**
+ * @file server/src/crm/crm.controller.ts
+ * @version 2.0.0 [2026-04-28]
+ * @desc 新增 PATCH /:id/status 接口，支持启用/禁用客户
+ */
+import {
+  Controller, Get, Post, Put, Patch, Delete,
+  Param, Body, Query, UseGuards, Req, ParseIntPipe,
 } from '@nestjs/common';
 import { CrmService } from './crm.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; 
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CrmCustomer } from './crm-customer.entity';
 
 @Controller('crm/customers')
-@UseGuards(JwtAuthGuard) 
+@UseGuards(JwtAuthGuard)
 export class CrmController {
   constructor(private readonly crmService: CrmService) {}
 
-  /**
-   * 获取客户列表
-   * 支持分页、名称模糊搜索、来源/行业/等级筛选
-   * GET /api/crm/customers
-   */
   @Get()
   async findAll(@Req() req: any, @Query() query: any) {
-    // 💡 这里的 query 会包含前端传来的所有字段：name, source, industry, level, page, pageSize
-    return this.crmService.findAll(req.user, { 
-      ...query, 
-      page: Number(query.page) || 1, 
-      pageSize: Number(query.pageSize) || 10 
+    return this.crmService.findAll(req.user, {
+      ...query,
+      page:     Number(query.page)     || 1,
+      pageSize: Number(query.pageSize) || 10,
+      status:   query.status !== undefined ? Number(query.status) : undefined,
     });
   }
 
-  /**
-   * 创建客户
-   * POST /api/crm/customers
-   */
   @Post()
   async create(@Req() req: any, @Body() customerData: Partial<CrmCustomer>) {
     return this.crmService.create(req.user, customerData);
   }
 
-  /**
-   * 更新客户信息
-   * PUT /api/crm/customers/:id
-   */
   @Put(':id')
   async update(
-    @Param('id') id: string, 
-    @Req() req: any, 
-    @Body() updateDto: any
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+    @Body() updateDto: any,
   ) {
-    // 将 id 转为 number 后传给 Service 进行权限检查和更新
-    return this.crmService.update(Number(id), req.user, updateDto);
+    return this.crmService.update(id, req.user, updateDto);
   }
 
-  /**
-   * 获取单个客户详情 (如果前端需要详情页可增加此接口)
-   */
+  /** 切换状态：PATCH /api/crm/customers/:id/status */
+  @Patch(':id/status')
+  async updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+    @Body('status') status: number,
+  ) {
+    return this.crmService.updateStatus(id, req.user, status);
+  }
+
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req: any) {
-    return this.crmService.findOne(Number(id), req.user);
+  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.crmService.findOne(id, req.user);
+  }
+
+  /** 软删除：DELETE /api/crm/customers/:id */
+  @Delete(':id')
+  async remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    await this.crmService.remove(id, req.user);
+    return { code: 200, message: '删除成功' };
   }
 }

@@ -17,7 +17,8 @@ import { CertificatesModule } from './certificates/certificates.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RoleModule } from './role/role.module';
-import { DeptModule } from './dept/dept.module';    // ← 全小写，修复大小写报错
+import { DeptModule } from './dept/dept.module'; 
+import { FinPaymentsModule } from './fin-payments/fin-payments.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { DeptModule } from './dept/dept.module';    // ← 全小写，修复大
     DeptModule,
     CrmModule,
     ContractModule,
+    FinPaymentsModule,
     InstitutionsModule,
     CertTypesModule,
     CertificatesModule,
