@@ -19,8 +19,8 @@ export class FinPayment {
   @Column({ name: 'dept_id', type: 'char', length: 36, comment: '所属分公司ID' })
   deptId: string;
 
-  @Column({ name: 'contract_id', type: 'char', length: 36, comment: '关联合同ID' })
-  contractId: string;
+  @Column({ name: 'contract_id',  type: 'int',comment: '关联合同ID' })
+  contractId: number;
 
   @Column({ name: 'phase_name', length: 50, nullable: true, comment: '款项阶段，如：首款、尾款' })
   phaseName: string;

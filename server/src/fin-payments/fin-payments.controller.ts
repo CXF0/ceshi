@@ -9,15 +9,15 @@ export class FinPaymentsController {
 
   /** GET /fin-payments?contractId=xxx  按合同查询回款列表 */
   @Get()
-  async findByContract(@Query('contractId') contractId: string) {
-    const data = await this.service.findByContract(contractId);
+  async findByContract(@Query('contractId') contractId: number) {
+    const data = await this.service.findByContract(Number(contractId));
     return { code: 200, data, message: 'success' };
   }
 
   /** GET /fin-payments/summary?contractId=xxx  回款汇总（用于合同详情页） */
   @Get('summary')
-  async getSummary(@Query('contractId') contractId: string) {
-    const data = await this.service.getSummaryByContract(contractId);
+  async getSummary(@Query('contractId') contractId: number) {
+    const data = await this.service.getSummaryByContract(Number(contractId));
     return { code: 200, data, message: 'success' };
   }
 

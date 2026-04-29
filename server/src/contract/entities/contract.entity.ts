@@ -1,24 +1,25 @@
 /**
  * @file server/src/contract/entities/contract.entity.ts
- * @version 2.0.0 [2026-04-28]
- * @desc 补充 attachments（多附件JSON）、createBy 字段
+ * @version 3.1.0 [2026-04-28]
+ * @desc dept_id 保持 char/string，补充 dept 关联
  */
 import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { CrmCustomer } from '../../crm/crm-customer.entity';
+import { Dept } from '../../dept/dept.entity';
 
 export enum ContractStatus {
-  DRAFT  = 'draft',   // 草稿
-  SIGNED = 'signed',  // 已签约
-  ACTIVE = 'active',  // 执行中
-  CLOSED = 'closed',  // 已结项
+  DRAFT  = 'draft',
+  SIGNED = 'signed',
+  ACTIVE = 'active',
+  CLOSED = 'closed',
 }
 
 @Entity('crm_contracts')
 export class CrmContract {
-  @PrimaryColumn({ type: 'char', length: 36 })
-  id: string;
+  @PrimaryColumn()
+  id: number;
 
-  @Column({ name: 'dept_id', type: 'char', length: 36 })
+  @Column({ name: 'dept_id', type: 'char', length: 36, nullable: true, comment: '所属分公司ID' })
   deptId: string;
 
   @Column({ name: 'customer_id', type: 'char' })
@@ -66,25 +67,24 @@ export class CrmContract {
   @Column({ name: 'status', type: 'varchar', length: 20, default: ContractStatus.DRAFT })
   status: string;
 
-  /** 旧的单附件字段（保留兼容性） */
   @Column({ name: 'attachment_url', type: 'varchar', length: 255, nullable: true })
   attachmentUrl: string;
 
-  /**
-   * 多附件：JSON 数组存储，格式：
-   * [{ name: '合同扫描件.pdf', url: '/static/xxx.pdf', size: 102400 }]
-   * 数据库字段：attachments TEXT
-   */
-  @Column({ name: 'attachments', type: 'text', nullable: true, comment: '多附件JSON数组' })
+  @Column({ name: 'attachments', type: 'text', nullable: true })
   attachments: string;
 
   @Column({ name: 'create_by', type: 'varchar', length: 50, nullable: true })
   createBy: string;
 
-  @Column({ name: 'remark', type: 'text', nullable: true, comment: '备注' })
+  @Column({ name: 'remark', type: 'text', nullable: true })
   remark: string;
 
   @ManyToOne(() => CrmCustomer)
   @JoinColumn({ name: 'customer_id' })
   customer: CrmCustomer;
+
+  /** 关联部门，展示所属公司名称 */
+  @ManyToOne(() => Dept)
+  @JoinColumn({ name: 'dept_id' })
+  dept: Dept;
 }

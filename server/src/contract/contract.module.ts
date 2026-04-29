@@ -3,11 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ContractController } from './contract.controller';
 import { ContractService } from './contract.service';
 import { CrmContract } from './entities/contract.entity';
+import { Dept } from '../dept/dept.entity'; // ← 新增
 
 @Module({
   imports: [
-    // 💡 注册 Entity，否则 Service 无法注入 Repository
-    TypeOrmModule.forFeature([CrmContract])
+    TypeOrmModule.forFeature([CrmContract, Dept]), // ← 加入 Dept
   ],
   controllers: [ContractController],
   providers: [ContractService],

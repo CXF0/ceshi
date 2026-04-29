@@ -17,6 +17,7 @@ import {
   TeamOutlined,
   FileSearchOutlined,
   SafetyCertificateOutlined,  // ← 角色管理图标
+  ApartmentOutlined,
 } from '@ant-design/icons';
 
 export interface MenuItem {
@@ -94,6 +95,12 @@ export const menuConfig: MenuItem[] = [
         roles: ['admin'],
         label: '角色管理',
       },
+      {
+  key: '/system/depts',
+  icon: <ApartmentOutlined />, 
+  roles: ['admin'],
+  label: '公司管理',
+},
     ],
   },
 ];

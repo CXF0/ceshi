@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Table, Input, Card, Tag, message, Space, Row, Col, 
-  Select, Button, Drawer, Form, InputNumber, Descriptions, 
-  Tabs, List, Empty, Typography, Spin, Modal // 💡 增加了 Modal
+import {
+  Table, Input, Card, Tag, message, Space, Row, Col,
+  Select, Button, Drawer, Form, InputNumber, Descriptions,
+  Tabs, List, Empty, Typography, Spin, Modal, Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { 
-  UserOutlined, PhoneOutlined, EnvironmentOutlined, 
+import {
+  UserOutlined, PhoneOutlined,
   SearchOutlined, EyeOutlined, PlusOutlined, EditOutlined,
-  BankOutlined, CreditCardOutlined, WalletOutlined, ExclamationCircleOutlined
+  BankOutlined, WalletOutlined, ExclamationCircleOutlined,
+  DeleteOutlined, StopOutlined, CheckCircleOutlined, ReloadOutlined,
+  BankFilled,
 } from '@ant-design/icons';
-// 💡 修改点 1：使用你配置好的别名和封装好的 API
-import { CrmCustomerApi, CrmAccountApi } from '@/services/crm'; 
+import { CrmCustomerApi, CrmAccountApi } from '@/services/crm';
+import PermButton from '@/components/PermButton';
+import request from '@/utils/request';
+import { useDeptOptions } from '@/hooks/useDeptOptions';
 
 const { Text } = Typography;
 
-// 💡 行业与等级配置 (保持不变)
 export const INDUSTRY_OPTIONS = [
   { label: '农林牧渔', value: 'agriculture' },
   { label: '采矿业', value: 'mining' },
@@ -45,7 +48,6 @@ export const LEVEL_OPTIONS = [
   { label: '渠道客户', value: 'channel', color: 'cyan' },
 ];
 
-// 💡 定义账户接口
 interface CustomerAccount {
   id: number;
   type: 'corporate' | 'private';
@@ -63,38 +65,47 @@ interface CustomerRecord {
   id: number;
   name: string;
   deptId: string;
+  dept?: { id: string; deptName: string };
   usciCode: string;
   scaleCount: number;
   address: string;
   contactPerson: string;
   contactPhone: string;
   source: string;
-  industry: string; 
-  level: string;    
-  accounts?: CustomerAccount[]; 
+  industry: string;
+  level: string;
+  status: number;
+  accounts?: CustomerAccount[];
 }
+
+const TH = (label: string) => <span style={{ whiteSpace: 'nowrap' }}>{label}</span>;
 
 const CustomerList: React.FC = () => {
   const [form] = Form.useForm();
+  const { deptOptions, deptMap } = useDeptOptions(); // ← 动态获取公司列表
+
   const [data, setData] = useState<CustomerRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
-  
-  const [addVisible, setAddVisible] = useState(false);     
-  const [detailVisible, setDetailVisible] = useState(false); 
+
+  const [addVisible, setAddVisible] = useState(false);
+  const [detailVisible, setDetailVisible] = useState(false);
   const [currentRow, setCurrentRow] = useState<CustomerRecord | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
-  
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const [params, setParams] = useState({ 
-    page: 1, 
-    pageSize: 10, 
-    name: '',
-    source: undefined as string | undefined,
-    industry: undefined as string | undefined, 
-    level: undefined as string | undefined      
+  const [filterName, setFilterName]           = useState('');
+  const [filterIndustry, setFilterIndustry]   = useState<string | undefined>();
+  const [filterLevel, setFilterLevel]         = useState<string | undefined>();
+  const [filterSource, setFilterSource]       = useState<string | undefined>();
+  const [filterDeptId, setFilterDeptId]       = useState<string | undefined>(); // ← 新增
+
+  const [params, setParams] = useState<any>({
+    page: 1, pageSize: 10,
+    name: '', source: undefined,
+    industry: undefined, level: undefined,
+    status: 1,
   });
 
   const sourceOptions = [
@@ -106,14 +117,13 @@ const CustomerList: React.FC = () => {
     { label: '其他', value: '其他' },
   ];
 
-  // 💡 修改点 2：替换为封装好的 CrmCustomerApi.findAll
   const fetchData = async () => {
     setLoading(true);
     try {
       const res = await CrmCustomerApi.findAll(params);
       setData(res.data.items || []);
       setTotal(res.data.total || 0);
-    } catch (error: any) {
+    } catch {
       message.error('加载数据失败');
     } finally {
       setLoading(false);
@@ -122,53 +132,105 @@ const CustomerList: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [params]);
 
-  // 💡 修改点 3：替换为封装好的 CrmCustomerApi.findOne
+  const handleSearch = () => {
+    setParams((prev: any) => ({
+      ...prev, page: 1,
+      name:     filterName,
+      industry: filterIndustry,
+      level:    filterLevel,
+      source:   filterSource,
+      deptId:   filterDeptId,   // ← 新增
+    }));
+  };
+
+  const handleReset = () => {
+    setFilterName('');
+    setFilterIndustry(undefined);
+    setFilterLevel(undefined);
+    setFilterSource(undefined);
+    setFilterDeptId(undefined); // ← 新增
+    setParams({
+      page: 1, pageSize: 10,
+      name: '', source: undefined,
+      industry: undefined, level: undefined,
+      status: 1,
+    });
+  };
+
   const handleShowDetail = async (record: CustomerRecord) => {
-    setCurrentRow(record); 
+    setCurrentRow(record);
     setDetailVisible(true);
     setDetailLoading(true);
     try {
       const res = await CrmCustomerApi.findOne(record.id);
       setCurrentRow(res.data);
-    } catch (error: any) {
-      message.error('获取客户详细账户资料失败');
+    } catch {
+      message.error('获取客户详细资料失败');
     } finally {
       setDetailLoading(false);
     }
   };
 
-  // 💡 修改点 4：新增删除账户的交互方法
   const handleDeleteAccount = (acc: CustomerAccount) => {
     Modal.confirm({
       title: '确认删除账户？',
       icon: <ExclamationCircleOutlined />,
       content: `即将删除 [${acc.accountName}]，删除后无法恢复。`,
-      okText: '确认删除',
-      okType: 'danger',
-      cancelText: '取消',
+      okText: '确认删除', okType: 'danger', cancelText: '取消',
       onOk: async () => {
         try {
           await CrmAccountApi.remove(acc.id);
           message.success('账户已移除');
-          // 💡 重新触发详情查询，刷新账户列表
           if (currentRow) handleShowDetail(currentRow);
-          fetchData(); // 顺便同步一下列表页的“账户数”Tag
-        } catch (error: any) {
-          message.error('删除失败');
-        }
+          fetchData();
+        } catch { message.error('删除失败'); }
       },
     });
   };
 
-  // 💡 修改点 5：新增设为默认账户的快捷方法
   const handleSetDefaultAccount = async (id: number) => {
     try {
       await CrmAccountApi.setDefault(id);
       message.success('已设为默认账户');
       if (currentRow) handleShowDetail(currentRow);
-    } catch (error: any) {
-      message.error('设置失败');
-    }
+    } catch { message.error('设置失败'); }
+  };
+
+  const handleToggleStatus = (record: CustomerRecord) => {
+    const isDisabling = record.status === 1;
+    Modal.confirm({
+      title: isDisabling ? '确认禁用该客户？' : '确认启用该客户？',
+      icon: <ExclamationCircleOutlined />,
+      content: isDisabling
+        ? `禁用后「${record.name}」将不在默认列表中显示，历史数据保留。`
+        : `启用后「${record.name}」将恢复正常显示。`,
+      okText: isDisabling ? '确认禁用' : '确认启用',
+      okType: isDisabling ? 'danger' : 'primary',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await request.patch(`/crm/customers/${record.id}/status`, { status: isDisabling ? 0 : 1 });
+          message.success(isDisabling ? '已禁用' : '已启用');
+          fetchData();
+        } catch { message.error('操作失败'); }
+      },
+    });
+  };
+
+  const handleDeleteCustomer = (record: CustomerRecord) => {
+    Modal.confirm({
+      title: '确认删除客户？',
+      icon: <ExclamationCircleOutlined />,
+      content: `即将删除客户「${record.name}」，数据将被归档，不可恢复。`,
+      okText: '确认删除', okType: 'danger', cancelText: '取消',
+      onOk: async () => {
+        try {
+          await CrmCustomerApi.remove(record.id);
+          message.success('客户已删除');
+          fetchData();
+        } catch { message.error('删除失败'); }
+      },
+    });
   };
 
   const showAddDrawer = () => {
@@ -181,11 +243,10 @@ const CustomerList: React.FC = () => {
   const showEditDrawer = (record: CustomerRecord) => {
     setIsEdit(true);
     setCurrentRow(record);
-    form.setFieldsValue(record); 
+    form.setFieldsValue(record);
     setAddVisible(true);
   };
 
-  // 💡 修改点 6：替换保存逻辑
   const onFinishSave = async (values: any) => {
     setSubmitting(true);
     try {
@@ -206,130 +267,188 @@ const CustomerList: React.FC = () => {
   };
 
   const columns: ColumnsType<CustomerRecord> = [
-    { 
-      title: '企业信息', 
-      dataIndex: 'name', 
-      width: 300,
+    {
+      title: TH('企业信息'),
+      dataIndex: 'name',
+      width: 240,
       render: (text, record) => (
         <div>
           <div style={{ fontWeight: 'bold', fontSize: 15, color: '#4260e7ff' }}>{text}</div>
           <div style={{ fontSize: 12, color: '#999' }}>信用代码: {record.usciCode || '--'}</div>
         </div>
-      )
+      ),
     },
     {
-      title: '客户等级', 
+      title: TH('客户等级'),
       dataIndex: 'level',
-      width: 120,
+      width: 100,
       render: (val) => {
         const target = LEVEL_OPTIONS.find(o => o.value === val) || { label: '普通客户', color: 'blue' };
         return <Tag color={target.color}>{target.label}</Tag>;
-      }
+      },
     },
     {
-      title: '所属行业', 
+      title: TH('所属行业'),
       dataIndex: 'industry',
-      width: 140,
-      render: (val) => INDUSTRY_OPTIONS.find(o => o.value === val)?.label || '--'
+      width: 130,
+      render: (val) => INDUSTRY_OPTIONS.find(o => o.value === val)?.label || '--',
     },
-    { 
-      title: '联系人', 
+    {
+      title: TH('联系人'),
       dataIndex: 'contactPerson',
+      width: 140,
       render: (text, record) => (
         <div>
           <Space><UserOutlined style={{ color: '#888' }} />{text || '-'}</Space>
           <div style={{ fontSize: 12, color: '#888' }}><PhoneOutlined /> {record.contactPhone || '-'}</div>
         </div>
-      )
-    },
-    { 
-      title: '账户数', 
-      key: 'acc_count',
-      width: 80,
-      align: 'center',
-      render: (_, record) => <Tag color={record.accounts?.length ? 'green' : 'default'}>{record.accounts?.length || 0}</Tag>
-    },
-    { 
-      title: '所属分部', 
-      dataIndex: 'deptId',
-      render: (id) => {
-        const map: any = { '1': { name: '昆明分部', color: 'cyan' }, '2': { name: '西安分部', color: 'geekblue' }, '3': { name: '成都分部', color: 'orange' } };
-        const item = map[id] || { name: '其他', color: 'default' };
-        return <Tag color={item.color}>{item.name}</Tag>;
-      }
-    },
-    { 
-      title: '客户来源', 
-      dataIndex: 'source',
-      render: (text) => text ? <Tag color="purple">{text}</Tag> : '-'
-    },
-    { 
-      title: '地址', 
-      dataIndex: 'address',
-      ellipsis: true,
-      render: (text) => <span title={text}><EnvironmentOutlined /> {text || '-'}</span>
+      ),
     },
     {
-      title: '操作',
+      title: TH('账户数'),
+      key: 'acc_count',
+      width: 72,
+      align: 'center',
+      render: (_, record) => (
+        <Tag color={record.accounts?.length ? 'green' : 'default'}>{record.accounts?.length || 0}</Tag>
+      ),
+    },
+    {
+      title: TH('客户来源'),
+      dataIndex: 'source',
+      width: 100,
+      render: (text) => text ? <Tag color="purple">{text}</Tag> : '-',
+    },
+    // ✅ 地址列 → 所属公司列
+    {
+      title: TH('所属公司'),
+      dataIndex: 'deptId',
+      width: 160,
+      render: (deptId: string, record: any) => {
+        const name = record.dept?.deptName || deptMap[deptId] || deptId;
+        return <Tag color="cyan">{name}</Tag>;
+      },
+    },
+    {
+      title: TH('状态'),
+      dataIndex: 'status',
+      width: 88,
+      render: (status: number, record: any) => (
+        <Tooltip title={status === 1 ? '点击禁用' : '点击启用'}>
+          <Tag
+            icon={status === 1 ? <CheckCircleOutlined /> : <StopOutlined />}
+            color={status === 1 ? 'success' : 'default'}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => handleToggleStatus(record)}
+          >
+            {status === 1 ? '正常' : '已禁用'}
+          </Tag>
+        </Tooltip>
+      ),
+    },
+    {
+      title: TH('操作'),
       key: 'action',
       fixed: 'right',
-      width: 160,
+      width: 200,
       render: (_, record) => (
         <Space>
-          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleShowDetail(record)}>详情</Button>
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => showEditDrawer(record)}>编辑</Button>
+          <PermButton perm="/crm:view" type="link" size="small" icon={<EyeOutlined />}
+            onClick={() => handleShowDetail(record)}>详情</PermButton>
+          <PermButton perm="/crm:edit" type="link" size="small" icon={<EditOutlined />}
+            onClick={() => showEditDrawer(record)}>编辑</PermButton>
+          <PermButton perm="/crm:delete" type="link" size="small" danger icon={<DeleteOutlined />}
+            onClick={() => handleDeleteCustomer(record)}>删除</PermButton>
         </Space>
       ),
     },
   ];
 
   return (
-    <Card 
-      title={<Space><div style={{ width: 4, height: 16, backgroundColor: '#52c41a', borderRadius: 2 }} /><span>客户资源档案</span></Space>}
-      extra={<Button type="primary" icon={<PlusOutlined />} onClick={showAddDrawer}>新增客户</Button>}
+    <Card
+      title={
+        <Space>
+          <div style={{ width: 4, height: 16, backgroundColor: '#52c41a', borderRadius: 2 }} />
+          <span>客户资源档案</span>
+        </Space>
+      }
+      extra={
+        <PermButton perm="/crm:add" type="primary" icon={<PlusOutlined />} onClick={showAddDrawer}>
+          新增客户
+        </PermButton>
+      }
     >
-      <div style={{ marginBottom: 20 }}>
-        <Row gutter={[16, 16]}>
-          <Col span={6}>
-            <Input placeholder="搜索企业全称..." prefix={<SearchOutlined />} allowClear 
-              onPressEnter={(e: any) => setParams({ ...params, name: e.target.value, page: 1 })} />
+      <div style={{ marginBottom: 16 }}>
+        <Row gutter={[12, 12]} align="middle">
+          <Col flex="220px">
+            <Input
+              placeholder="搜索企业全称..."
+              prefix={<SearchOutlined />}
+              allowClear
+              value={filterName}
+              onChange={e => setFilterName(e.target.value)}
+              onPressEnter={handleSearch}
+            />
           </Col>
-          <Col span={4}>
-            <Select placeholder="行业筛选" style={{ width: '100%' }} allowClear 
-              onChange={(val) => setParams({ ...params, industry: val, page: 1 })} options={INDUSTRY_OPTIONS} />
+          <Col flex="130px">
+            <Select placeholder="行业" style={{ width: '100%' }} allowClear
+              value={filterIndustry} onChange={val => setFilterIndustry(val)}
+              options={INDUSTRY_OPTIONS} />
           </Col>
-          <Col span={4}>
-            <Select placeholder="等级筛选" style={{ width: '100%' }} allowClear 
-              onChange={(val) => setParams({ ...params, level: val, page: 1 })} options={LEVEL_OPTIONS} />
+          <Col flex="120px">
+            <Select placeholder="等级" style={{ width: '100%' }} allowClear
+              value={filterLevel} onChange={val => setFilterLevel(val)}
+              options={LEVEL_OPTIONS} />
           </Col>
-          <Col span={4}>
-            <Select placeholder="来源筛选" style={{ width: '100%' }} allowClear 
-              onChange={(val) => setParams({ ...params, source: val || undefined, page: 1 })} options={sourceOptions} />
+          <Col flex="120px">
+            <Select placeholder="来源" style={{ width: '100%' }} allowClear
+              value={filterSource} onChange={val => setFilterSource(val)}
+              options={sourceOptions} />
+          </Col>
+          {/* ✅ 新增：公司筛选（有多个公司时才显示） */}
+          {deptOptions.length > 1 && (
+            <Col flex="240px">
+              <Select placeholder="所属公司" style={{ width: '100%' }} allowClear
+                value={filterDeptId} onChange={val => setFilterDeptId(val)}
+                options={deptOptions} />
+            </Col>
+          )}
+          <Col>
+            <Space>
+              <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>查询</Button>
+              <Button icon={<ReloadOutlined />} onClick={handleReset}>重置</Button>
+            </Space>
           </Col>
         </Row>
       </div>
 
-      <Table 
-        columns={columns} 
-        dataSource={data} 
-        rowKey="id" 
-        loading={loading} 
-        scroll={{ x: 1400 }} 
-        pagination={{ 
-          current: params.page, 
-          pageSize: params.pageSize, 
-          total: total, 
-          showTotal: (t) => `共找到 ${t} 家客户`, 
-          onChange: (p, s) => setParams({ ...params, page: p, pageSize: s }) 
-        }} 
+      <Table
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        scroll={{ x: 1200 }}
+        rowClassName={(record) => record.status === 0 ? 'row-disabled' : ''}
+        pagination={{
+          current: params.page,
+          pageSize: params.pageSize,
+          total,
+          showSizeChanger: true,
+          showTotal: (t) => `共找到 ${t} 家客户`,
+          onChange: (p, s) => setParams((prev: any) => ({ ...prev, page: p, pageSize: s })),
+        }}
       />
 
-      <Drawer 
-        title={<span><EyeOutlined /> 客户详细资料</span>} 
-        width={720} 
-        onClose={() => setDetailVisible(false)} 
-        open={detailVisible}
-        destroyOnClose
+      <style>{`
+        .row-disabled td { opacity: 0.5; }
+        .row-disabled td:last-child { opacity: 1; }
+      `}</style>
+
+      {/* ── 详情抽屉 ── */}
+      <Drawer
+        title={<span><EyeOutlined /> 客户详细资料</span>}
+        width={720} onClose={() => setDetailVisible(false)}
+        open={detailVisible} destroyOnClose
       >
         <Spin spinning={detailLoading}>
           {currentRow && (
@@ -337,7 +456,12 @@ const CustomerList: React.FC = () => {
               <Tabs.TabPane tab="基础资料" key="1">
                 <Descriptions bordered column={2} size="small">
                   <Descriptions.Item label="企业全称" span={2} labelStyle={{ width: 120 }}>
-                    <Text strong style={{ color: '#1890ff' }}>{currentRow.name}</Text>
+                    <Space>
+                      <Text strong style={{ color: '#1890ff' }}>{currentRow.name}</Text>
+                      <Tag color={currentRow.status === 1 ? 'success' : 'default'}>
+                        {currentRow.status === 1 ? '正常' : '已禁用'}
+                      </Tag>
+                    </Space>
                   </Descriptions.Item>
                   <Descriptions.Item label="客户等级">
                     <Tag color={LEVEL_OPTIONS.find(o => o.value === currentRow.level)?.color}>
@@ -347,7 +471,10 @@ const CustomerList: React.FC = () => {
                   <Descriptions.Item label="所属行业">
                     {INDUSTRY_OPTIONS.find(o => o.value === currentRow.industry)?.label || '--'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="社会信用代码" span={2}>{currentRow.usciCode || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="所属公司">
+                    <Tag color="cyan">{(currentRow as any).dept?.deptName || deptMap[(currentRow as any).deptId] || '--'}</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="社会信用代码">{currentRow.usciCode || '--'}</Descriptions.Item>
                   <Descriptions.Item label="联系人">{currentRow.contactPerson || '--'}</Descriptions.Item>
                   <Descriptions.Item label="联系电话">{currentRow.contactPhone || '--'}</Descriptions.Item>
                   <Descriptions.Item label="客户来源">{currentRow.source || '--'}</Descriptions.Item>
@@ -355,43 +482,34 @@ const CustomerList: React.FC = () => {
                   <Descriptions.Item label="经营地址" span={2}>{currentRow.address || '--'}</Descriptions.Item>
                 </Descriptions>
               </Tabs.TabPane>
-              
+
               <Tabs.TabPane tab={`财务账户 (${currentRow.accounts?.length || 0})`} key="2">
                 <List
                   grid={{ gutter: 16, column: 1 }}
                   dataSource={currentRow.accounts || []}
                   renderItem={(acc) => {
-                    const copyText = acc.type === 'corporate' 
+                    const copyText = acc.type === 'corporate'
                       ? `单位名称：${acc.accountName}\n统一信用代码：${acc.usciCode || '--'}\n地址及电话：${acc.addressPhone || '--'}\n开户行及账号：${acc.bankName || '--'} ${acc.bankAccount || '--'}\n行号：${acc.bankCode || '--'}`
                       : `账户名称：${acc.accountName}\n银行卡号：${acc.bankAccount || '--'}\n开户银行：${acc.bankName || '--'}\n支付宝：${acc.alipayAccount || '--'}`;
-
                     return (
                       <List.Item>
-                        <Card 
-                          size="small" 
-                          variant="outlined"
+                        <Card size="small" variant="outlined"
                           style={{ borderLeft: acc.isDefault ? '4px solid #52c41a' : '4px solid #d9d9d9' }}
                           title={
                             <Space>
-                              {acc.type === 'corporate' ? <BankOutlined style={{ color: '#1890ff' }} /> : <UserOutlined style={{ color: '#fa8c16' }} />}
+                              {acc.type === 'corporate'
+                                ? <BankOutlined style={{ color: '#1890ff' }} />
+                                : <UserOutlined style={{ color: '#fa8c16' }} />}
                               <span style={{ fontWeight: 'bold' }}>{acc.accountName}</span>
                               {acc.isDefault && <Tag color="green">默认</Tag>}
                             </Space>
                           }
-                          // 💡 修改点 7：在卡片右上角增加“设为默认”和“删除”按钮
                           extra={
                             <Space split={<div style={{ width: 1, height: 12, backgroundColor: '#eee' }} />}>
                               {!acc.isDefault && (
                                 <Typography.Link onClick={() => handleSetDefaultAccount(acc.id)}>设为默认</Typography.Link>
                               )}
-                              <Typography.Link 
-                                onClick={() => {
-                                  navigator.clipboard.writeText(copyText);
-                                  message.success('已复制');
-                                }}
-                              >
-                                复制
-                              </Typography.Link>
+                              <Typography.Link onClick={() => { navigator.clipboard.writeText(copyText); message.success('已复制'); }}>复制</Typography.Link>
                               <Typography.Link type="danger" onClick={() => handleDeleteAccount(acc)}>删除</Typography.Link>
                             </Space>
                           }
@@ -407,16 +525,12 @@ const CustomerList: React.FC = () => {
                           ) : (
                             <Descriptions size="small" column={1} colon={false}>
                               <Descriptions.Item label={<Text type="secondary">持卡姓名</Text>}>{acc.accountName}</Descriptions.Item>
-                              {acc.bankAccount && (
-                                <>
-                                  <Descriptions.Item label={<Text type="secondary">银行名称</Text>}>{acc.bankName}</Descriptions.Item>
-                                  <Descriptions.Item label={<Text type="secondary">银行卡号</Text>}>{acc.bankAccount}</Descriptions.Item>
-                                </>
-                              )}
+                              {acc.bankAccount && (<>
+                                <Descriptions.Item label={<Text type="secondary">银行名称</Text>}>{acc.bankName}</Descriptions.Item>
+                                <Descriptions.Item label={<Text type="secondary">银行卡号</Text>}>{acc.bankAccount}</Descriptions.Item>
+                              </>)}
                               {acc.alipayAccount && (
-                                <Descriptions.Item label={<Space><WalletOutlined style={{ color: '#1296db' }} />支付宝</Space>}>
-                                  {acc.alipayAccount}
-                                </Descriptions.Item>
+                                <Descriptions.Item label={<Space><WalletOutlined style={{ color: '#1296db' }} />支付宝</Space>}>{acc.alipayAccount}</Descriptions.Item>
                               )}
                             </Descriptions>
                           )}
@@ -426,22 +540,17 @@ const CustomerList: React.FC = () => {
                   }}
                   locale={{ emptyText: <Empty description="暂无关联账户信息" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
                 />
-                <Button type="dashed" block icon={<PlusOutlined />} style={{ marginTop: 8 }}>
-                  新增账户
-                </Button>
+                <Button type="dashed" block icon={<PlusOutlined />} style={{ marginTop: 8 }}>新增账户</Button>
               </Tabs.TabPane>
             </Tabs>
           )}
         </Spin>
       </Drawer>
 
-      {/* 新增/编辑客户抽屉 */}
+      {/* ── 新增/编辑抽屉 ── */}
       <Drawer
         title={isEdit ? <span><EditOutlined /> 修改客户档案</span> : <span><PlusOutlined /> 新增客户档案</span>}
-        width={560}
-        onClose={() => setAddVisible(false)}
-        open={addVisible}
-        destroyOnClose
+        width={560} onClose={() => setAddVisible(false)} open={addVisible} destroyOnClose
         footer={
           <Space style={{ float: 'right' }}>
             <Button onClick={() => setAddVisible(false)}>取消</Button>
@@ -450,34 +559,47 @@ const CustomerList: React.FC = () => {
         }
       >
         <Form form={form} layout="vertical" onFinish={onFinishSave} initialValues={{ level: 'common', scaleCount: 0 }}>
-          <Form.Item name="name" label="企业全称" rules={[{ required: true, message: '请输入企业全称' }]}><Input placeholder="请输入完整的企业工商登记名称" /></Form.Item>
-          
+          <Form.Item name="name" label="企业全称" rules={[{ required: true, message: '请输入企业全称' }]}>
+            <Input placeholder="请输入完整的企业工商登记名称" />
+          </Form.Item>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="level" label="客户等级" rules={[{ required: true }]}><Select options={LEVEL_OPTIONS} /></Form.Item>
+              <Form.Item name="level" label="客户等级" rules={[{ required: true }]}>
+                <Select options={LEVEL_OPTIONS} />
+              </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="industry" label="所属行业" rules={[{ required: true }]}><Select options={INDUSTRY_OPTIONS} showSearch optionFilterProp="label" /></Form.Item>
+              <Form.Item name="industry" label="所属行业" rules={[{ required: true }]}>
+                <Select options={INDUSTRY_OPTIONS} showSearch optionFilterProp="label" />
+              </Form.Item>
             </Col>
           </Row>
-
-          <Form.Item name="usciCode" label="统一社会信用代码"><Input placeholder="18位社会信用代码" maxLength={18} /></Form.Item>
-          
+          <Form.Item name="usciCode" label="统一社会信用代码">
+            <Input placeholder="18位社会信用代码" maxLength={18} />
+          </Form.Item>
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="contactPerson" label="联系人"><Input prefix={<UserOutlined />} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="contactPhone" label="联系电话"><Input prefix={<PhoneOutlined />} /></Form.Item></Col>
+            <Col span={12}>
+              <Form.Item name="contactPerson" label="联系人"><Input prefix={<UserOutlined />} /></Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="contactPhone" label="联系电话"><Input prefix={<PhoneOutlined />} /></Form.Item>
+            </Col>
           </Row>
-          
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="source" label="客户来源" rules={[{ required: true }]}><Select options={sourceOptions} /></Form.Item>
+              <Form.Item name="source" label="客户来源" rules={[{ required: true }]}>
+                <Select options={sourceOptions} />
+              </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="scaleCount" label="人员规模"><InputNumber style={{ width: '100%' }} min={0} addonAfter="人" /></Form.Item>
+              <Form.Item name="scaleCount" label="人员规模">
+                <InputNumber style={{ width: '100%' }} min={0} addonAfter="人" />
+              </Form.Item>
             </Col>
           </Row>
-
-          <Form.Item name="address" label="详细地址"><Input.TextArea rows={3} placeholder="请输入企业的详细通讯地址或经营地址" /></Form.Item>
+          <Form.Item name="address" label="详细地址">
+            <Input.TextArea rows={3} placeholder="请输入企业的详细通讯地址或经营地址" />
+          </Form.Item>
         </Form>
       </Drawer>
     </Card>

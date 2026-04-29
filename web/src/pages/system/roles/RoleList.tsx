@@ -1,13 +1,13 @@
 /**
  * @file web/src/pages/system/roles/RoleList.tsx
- * @version 2.0.0 [2026-04-28]
- * @desc 角色管理：去掉标识说明、修正列宽、新增菜单+按钮权限配置抽屉
+ * @version 2.1.0 [2026-04-28]
+ * @desc 保存权限时自动补充父级菜单 key，避免菜单被过滤掉
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Table, Card, Button, Tag, Space, Modal, Form, Input,
   Switch, message, Popconfirm, Tooltip, Divider,
-  Badge, Row, Col, Drawer, Tree, Spin,
+  Badge, Row, Col, Drawer, Tree,
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import {
@@ -29,7 +29,6 @@ const ROLE_COLOR: Record<string, string> = {
 };
 
 // ── 菜单+按钮权限树定义 ──────────────────────────────
-// key 规则：菜单用路由 key，按钮用 "路由:操作" 格式
 const PERMISSION_TREE: DataNode[] = [
   {
     title: '业务看板', key: '/dashboard',
@@ -116,7 +115,7 @@ const PERMISSION_TREE: DataNode[] = [
   },
 ];
 
-// 获取所有叶子节点 key（用于全选/全不选）
+// ── 工具：获取所有节点 key（含父级，用于全选）────────
 const getAllKeys = (nodes: DataNode[]): string[] => {
   const keys: string[] = [];
   const walk = (list: DataNode[]) => {
@@ -130,19 +129,65 @@ const getAllKeys = (nodes: DataNode[]): string[] => {
 };
 const ALL_KEYS = getAllKeys(PERMISSION_TREE);
 
+// ── 工具：保存时自动补充父级 key ──────────────────────
+// 例：勾选了 /crm:add，自动把 /crm、crm_group 也加进去
+// 这样 Sidebar 才能正确显示菜单入口
+function expandWithAncestors(checkedKeys: string[], tree: DataNode[]): string[] {
+  // 建立 子key → 父key 映射
+  const parentMap = new Map<string, string>();
+  const buildMap = (nodes: DataNode[], parentKey?: string) => {
+    nodes.forEach(n => {
+      const key = n.key as string;
+      if (parentKey) parentMap.set(key, parentKey);
+      if (n.children) buildMap(n.children, key);
+    });
+  };
+  buildMap(tree);
+
+  const result = new Set<string>(checkedKeys);
+  checkedKeys.forEach(key => {
+    let cur = key;
+    while (parentMap.has(cur)) {
+      const parent = parentMap.get(cur)!;
+      result.add(parent);
+      cur = parent;
+    }
+  });
+
+  return Array.from(result);
+}
+
+// ── 工具：打开抽屉时过滤掉纯父级 key，只保留叶子和有意义的节点
+// 让 Tree 的 checkedKeys 只显示用户真正勾选的，父级由 Tree 自动半选
+function filterLeafKeys(permissions: string[], tree: DataNode[]): string[] {
+  // 收集所有父级 key（有 children 的节点）
+  const parentKeys = new Set<string>();
+  const walk = (nodes: DataNode[]) => {
+    nodes.forEach(n => {
+      if (n.children && n.children.length > 0) {
+        parentKeys.add(n.key as string);
+        walk(n.children);
+      }
+    });
+  };
+  walk(tree);
+
+  // 只返回非父级的 key（即叶子节点权限）
+  return permissions.filter(k => !parentKeys.has(k));
+}
+
 // ── 主组件 ─────────────────────────────────────────────
 const RoleList: React.FC = () => {
-  const [loading, setLoading]           = useState(false);
-  const [data, setData]                 = useState<any[]>([]);
-  const [modalOpen, setModalOpen]       = useState(false);
-  const [editingId, setEditingId]       = useState<number | null>(null);
-  const [searchName, setSearchName]     = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [data, setData]               = useState<any[]>([]);
+  const [modalOpen, setModalOpen]     = useState(false);
+  const [editingId, setEditingId]     = useState<number | null>(null);
+  const [searchName, setSearchName]   = useState('');
 
-  // 权限配置抽屉
-  const [permDrawerOpen, setPermDrawerOpen]   = useState(false);
-  const [permTarget, setPermTarget]           = useState<any>(null);   // 当前配置的角色
-  const [checkedKeys, setCheckedKeys]         = useState<string[]>([]);
-  const [permSaving, setPermSaving]           = useState(false);
+  const [permDrawerOpen, setPermDrawerOpen] = useState(false);
+  const [permTarget, setPermTarget]         = useState<any>(null);
+  const [checkedKeys, setCheckedKeys]       = useState<string[]>([]);
+  const [permSaving, setPermSaving]         = useState(false);
 
   const [form] = Form.useForm();
 
@@ -225,12 +270,13 @@ const RoleList: React.FC = () => {
   // ── 打开权限配置抽屉 ──────────────────────────────────
   const openPermDrawer = (record: any) => {
     setPermTarget(record);
-    // 解析已有权限（后端存的是 JSON 字符串或数组）
     let saved: string[] = [];
     try {
-      saved = Array.isArray(record.permissions)
+      const raw = Array.isArray(record.permissions)
         ? record.permissions
         : JSON.parse(record.permissions || '[]');
+      // 打开时只勾选叶子节点，父级由 Tree 自动处理半选状态
+      saved = filterLeafKeys(raw, PERMISSION_TREE);
     } catch { saved = []; }
     setCheckedKeys(saved);
     setPermDrawerOpen(true);
@@ -241,9 +287,12 @@ const RoleList: React.FC = () => {
     if (!permTarget) return;
     setPermSaving(true);
     try {
+      // ✅ 关键：保存时自动补充父级菜单 key
+      const fullPermissions = expandWithAncestors(checkedKeys, PERMISSION_TREE);
+
       await request.put(`/role/${permTarget.id}`, {
         ...permTarget,
-        permissions: checkedKeys,
+        permissions: fullPermissions,
       });
       message.success(`「${permTarget.roleName}」权限配置已保存`);
       setPermDrawerOpen(false);
@@ -255,9 +304,20 @@ const RoleList: React.FC = () => {
     }
   };
 
-  // ── 全选 / 全不选 ──────────────────────────────────
+  // ── 全选 / 全不选（只操作叶子节点，父级自动跟随）────
+  const leafKeys = ALL_KEYS.filter(k => {
+    const parentKeys = new Set<string>();
+    const walk = (nodes: DataNode[]) => {
+      nodes.forEach(n => {
+        if (n.children?.length) { parentKeys.add(n.key as string); walk(n.children); }
+      });
+    };
+    walk(PERMISSION_TREE);
+    return !parentKeys.has(k);
+  });
+
   const handleCheckAll = () => {
-    setCheckedKeys(checkedKeys.length === ALL_KEYS.length ? [] : ALL_KEYS);
+    setCheckedKeys(checkedKeys.length === leafKeys.length ? [] : leafKeys);
   };
 
   // ── 表格列定义 ────────────────────────────────────────
@@ -312,7 +372,15 @@ const RoleList: React.FC = () => {
           const p = Array.isArray(record.permissions)
             ? record.permissions
             : JSON.parse(record.permissions || '[]');
-          count = p.length;
+          // 只统计叶子节点数量（实际操作权限数）
+          const parentKeys = new Set<string>();
+          const walk = (nodes: DataNode[]) => {
+            nodes.forEach(n => {
+              if (n.children?.length) { parentKeys.add(n.key as string); walk(n.children); }
+            });
+          };
+          walk(PERMISSION_TREE);
+          count = p.filter((k: string) => !parentKeys.has(k)).length;
         } catch { count = 0; }
         return (
           <Badge
@@ -418,7 +486,7 @@ const RoleList: React.FC = () => {
           <Col>
             <Space>
               <Button type="primary" icon={<SearchOutlined />} onClick={loadData}>查询</Button>
-              <Button icon={<ReloadOutlined />} onClick={() => { setSearchName(''); }}>重置</Button>
+              <Button icon={<ReloadOutlined />} onClick={() => setSearchName('')}>重置</Button>
             </Space>
           </Col>
           <Col flex="auto" style={{ textAlign: 'right' }}>
@@ -518,7 +586,7 @@ const RoleList: React.FC = () => {
             <Space>
               <Button onClick={() => setPermDrawerOpen(false)}>取消</Button>
               <Button onClick={handleCheckAll}>
-                {checkedKeys.length === ALL_KEYS.length ? '全不选' : '全选'}
+                {checkedKeys.length === leafKeys.length ? '全不选' : '全选'}
               </Button>
               <Button type="primary" loading={permSaving} onClick={handleSavePerm}>
                 保存权限
@@ -528,7 +596,7 @@ const RoleList: React.FC = () => {
         }
       >
         <div style={{ marginBottom: 12, color: '#8c8c8c', fontSize: 12 }}>
-          已选 <span style={{ color: '#722ed1', fontWeight: 600 }}>{checkedKeys.length}</span> / {ALL_KEYS.length} 项权限
+          已选 <span style={{ color: '#722ed1', fontWeight: 600 }}>{checkedKeys.length}</span> / {leafKeys.length} 项权限
         </div>
         <Tree
           checkable

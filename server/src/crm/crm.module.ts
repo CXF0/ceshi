@@ -6,16 +6,11 @@ import { CrmCustomer } from './crm-customer.entity';
 import { CrmCustomerAccount } from './crm-customer-account.entity';
 import { CrmAccountService } from './crm-account.service';
 import { CrmAccountController } from './crm-account.controller';
+import { Dept } from '../dept/dept.entity'; // ← 新增
 
-/**
- * ⚠️ 原代码修正：
- * - 原 Module 只注册了 CrmCustomer，缺少 CrmCustomerAccount
- * - crm-account.controller.ts 错误地注入了 CrmService 而非 CrmAccountService
- * - 这里统一将两个 Entity 和两个 Service 都注册进来
- */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([CrmCustomer, CrmCustomerAccount]),
+    TypeOrmModule.forFeature([CrmCustomer, CrmCustomerAccount, Dept]), // ← 加入 Dept
   ],
   controllers: [CrmController, CrmAccountController],
   providers: [CrmService, CrmAccountService],

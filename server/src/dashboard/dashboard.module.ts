@@ -1,19 +1,21 @@
+/**
+ * @file server/src/dashboard/dashboard.module.ts
+ * @version 2.0.0 [2026-04-29]
+ */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
-// 💡 确保实体导入路径与你实际文件位置一致
 import { CrmContract } from '../contract/entities/contract.entity';
-import { CertificationType } from '../cert-types/entities/cert-type.entity';
+import { Certificate } from '../certificates/entities/certificate.entity';
+import { Dept } from '../dept/dept.entity';
+import { User } from '../users/user.entity';
 
 @Module({
   imports: [
-    // 💡 关键：这里必须包含 CrmContract，Nest 才能生成 CrmContractRepository
-    TypeOrmModule.forFeature([CrmContract, CertificationType]),
+    TypeOrmModule.forFeature([CrmContract, Certificate, Dept, User]),
   ],
   controllers: [DashboardController],
   providers: [DashboardService],
-  // 如果其他模块需要用到 DashboardService，可以 export 它
-  exports: [DashboardService],
 })
 export class DashboardModule {}

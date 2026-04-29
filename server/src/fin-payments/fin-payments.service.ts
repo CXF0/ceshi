@@ -20,7 +20,7 @@ export class FinPaymentsService {
     private readonly contractRepo: Repository<CrmContract>,
   ) {}
 
-  async findByContract(contractId: string) {
+  async findByContract(contractId: number) {
     return this.repo.find({
       where: { contractId },
       order: { phaseName: 'ASC' },
@@ -59,7 +59,7 @@ export class FinPaymentsService {
     return { success: true };
   }
 
-  async getSummaryByContract(contractId: string) {
+  async getSummaryByContract(contractId: number) {
     const payments = await this.findByContract(contractId);
     return {
       totalDue:      payments.reduce((s, p) => s + p.amountDue, 0),

@@ -33,6 +33,7 @@ import NotificationDetail from './pages/system/notification/detail';
 import NotificationCreate from './pages/system/notification/NotificationCreate';
 import UserList from './pages/system/users/UserList';
 import RoleList from './pages/system/roles/RoleList';
+import DeptList from './pages/system/dept/DeptList';
 import nprogress from './utils/nprogress';
 
 const { Header, Content, Sider } = Layout;
@@ -48,7 +49,8 @@ export const breadcrumbNameMap: Record<string, string> = {
   '/system/notification':          '通知管理',
   '/system/notification/create':   '发布公告',
   '/system/users':                 '用户管理',
-  '/system/roles':                 '角色管理',   // ← 新增
+  '/system/roles':                 '角色管理', 
+  '/system/depts':                 '公司管理',
 };
 
 export const getBreadcrumbTitle = (path: string) => {
@@ -223,7 +225,7 @@ const App: React.FC = () => {
               </div>
             }
           >
-            <Route path="/dashboard" element={<Dashboard data={{ monthlyRevenue: undefined, targetProgress: undefined, followUpList: undefined }} />} />
+            <Route path="/dashboard" element={<Dashboard/>} />
             <Route path="/crm" element={<CustomerList />} />
             <Route path="/contract" element={<ContractList />} />
             <Route path="/contract/:id" element={<ContractDetail />} />
@@ -236,6 +238,7 @@ const App: React.FC = () => {
             <Route path="/system/notification/detail/:id" element={<NotificationDetail />} />
             <Route path="/system/users" element={<UserList />} />
             <Route path="/system/roles" element={<RoleList />} />
+            <Route path="/system/depts" element={<DeptList />} />
           </Route>
 
           {/* ③ 兜底 */}

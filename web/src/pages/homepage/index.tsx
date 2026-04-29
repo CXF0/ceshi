@@ -129,7 +129,7 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <h3 style={{ fontSize: 18, fontWeight: 800, color: '#2563eb', margin: 0, fontStyle: 'italic' }}>
             账号登录
           </h3>
-          <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>登录后进入正达认证管理后台</p>
+          <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>客户管家登录后进入正达认证管理后台</p>
         </div>
 
         {/* 表单 */}
@@ -204,7 +204,7 @@ export default function Homepage() {
           <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px', height: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
               <div style={{ fontSize: 22, fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.04em', color: '#2563eb' }}>
-                ZHENGYOUKE
+                ZhengDaTong
               </div>
               <nav style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
                 {[
@@ -237,10 +237,10 @@ export default function Homepage() {
                 onMouseEnter={e => (e.currentTarget.style.color = '#2563eb')}
                 onMouseLeave={e => (e.currentTarget.style.color = '#374151')}
               >
-                登录
+                管家登录
               </button>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.12em', fontStyle: 'italic' }}>
-                400-XXX-XXXX
+                025-66090399
               </span>
               <button
                 style={{
@@ -274,14 +274,14 @@ export default function Homepage() {
                   }} />
                   <span style={{ position: 'relative', display: 'inline-flex', width: 8, height: 8, borderRadius: '50%', background: '#2563eb' }} />
                 </span>
-                16年深耕认证行业 · 数字化赋能
+                深耕认证行业 · 数字化赋能
               </div>
               <h1 style={{ fontSize: 'clamp(40px, 5vw, 72px)', fontWeight: 700, lineHeight: 1.1, marginBottom: 32, letterSpacing: '-0.03em', fontStyle: 'italic' }}>
                 让企业认证<br />
                 <span className="hp-primary-blue">更简单、更透明</span>
               </h1>
               <p style={{ fontSize: 17, color: '#6b7280', lineHeight: 1.75, marginBottom: 40, maxWidth: 480 }}>
-                证优客是专业的企业认证服务平台，为不同企业提供定制化服务。通过"人工+智能"的方式，保证您的服务品质。
+                正达通是专业的企业认证服务平台，为不同企业提供定制化服务。通过"人工+智能"的方式，保证您的服务品质。
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div style={{ display: 'flex', marginLeft: -12 }}>
@@ -456,28 +456,28 @@ export default function Homepage() {
               <div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: '#3b82f6', marginBottom: 32, fontStyle: 'italic' }}>ZHENGYOUKE</div>
                 <p style={{ color: '#9ca3af', fontSize: 14, lineHeight: 1.75 }}>
-                  证优客-专业的企业认证服务平台。16年深耕行业，以人工+智能的方式，保证您的认证服务品质。
+                  正达通-专业的企业认证服务平台。深耕行业，以人工+智能的方式，保证您的认证服务品质。
                 </p>
               </div>
 
               <FooterCol title="热门认证" links={['ISO 9001 认证', 'ISO 27001 认证', 'CMMI 评估办理', 'ITSS 资质申办']} />
-              <FooterCol title="快捷链接" links={['优证管家登录', '服务进度查询', '客户案例库']} />
+              <FooterCol title="快捷链接" links={['达通管家登录', '服务进度查询', '客户案例']} />
 
               <div>
                 <h4 style={{ fontSize: 12, fontWeight: 700, marginBottom: 32, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#6b7280', fontStyle: 'italic' }}>联系我们</h4>
-                <p style={{ fontSize: 20, fontWeight: 700, color: 'white', marginBottom: 8, fontStyle: 'italic', letterSpacing: '-0.02em' }}>400-XXX-XXXX</p>
+                <p style={{ fontSize: 20, fontWeight: 700, color: 'white', marginBottom: 8, fontStyle: 'italic', letterSpacing: '-0.02em' }}>025-66090399</p>
                 <p style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.75, marginTop: 16 }}>
-                  地址：成都市高新区XXXX大厦<br />邮箱：service@zhengyouke.com
+                  地址：南京市建邺区江东中路 315 号中泰国际广场 6 幢 1205-2 室<br />邮箱：zhengdatong@163.com
                 </p>
               </div>
             </div>
 
             <div style={{ paddingTop: 48, borderTop: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 24 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.15em', margin: 0 }}>
-                © 2026 ZHENGYOUKE PLATFORM. ALL RIGHTS RESERVED.
+                © 2026 ZHENGDA TONG PLATFORM. ALL RIGHTS RESERVED.
               </p>
               <div style={{ display: 'flex', gap: 32 }}>
-                {['蜀ICP备XXXXXXX号', '隐私权条款', '服务协议'].map(link => (
+                {['苏ICP备XXXXXXX号', '隐私权条款', '服务协议'].map(link => (
                   <a key={link} href="#" style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', transition: 'color 0.2s' }}
                     onMouseEnter={e => (e.currentTarget.style.color = 'white')}
                     onMouseLeave={e => (e.currentTarget.style.color = '#4b5563')}
