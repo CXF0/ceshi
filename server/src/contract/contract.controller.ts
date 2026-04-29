@@ -42,8 +42,8 @@ export class ContractController {
 
   /** 更新合同 */
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
-    await this.contractService.update(id, body);
+  async update(@Param('id') id: number, @Body() body: any) {
+    await this.contractService.update(Number(id), body);
     return { code: 200, msg: '更新成功' };
   }
 
@@ -53,14 +53,14 @@ export class ContractController {
     @Param('id') id: string,
     @Body('status') status: string,
   ) {
-    const data = await this.contractService.updateStatus(id, status);
+    const data = await this.contractService.updateStatus(Number(id), status);
     return { code: 200, msg: '状态更新成功', data };
   }
 
   /** 删除合同 */
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    await this.contractService.remove(id);
+  async remove(@Param('id') id: number) {
+    await this.contractService.remove(Number(id));
     return { code: 200, msg: '删除成功' };
   }
 

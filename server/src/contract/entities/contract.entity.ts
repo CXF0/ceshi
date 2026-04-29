@@ -3,7 +3,7 @@
  * @version 3.1.0 [2026-04-28]
  * @desc dept_id 保持 char/string，补充 dept 关联
  */
-import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { CrmCustomer } from '../../crm/crm-customer.entity';
 import { Dept } from '../../dept/dept.entity';
 
@@ -16,7 +16,7 @@ export enum ContractStatus {
 
 @Entity('crm_contracts')
 export class CrmContract {
-  @PrimaryColumn()
+  @PrimaryGeneratedColumn({ type: 'int', comment: '合同ID' })
   id: number;
 
   @Column({ name: 'dept_id', type: 'char', length: 36, nullable: true, comment: '所属分公司ID' })
@@ -88,3 +88,5 @@ export class CrmContract {
   @JoinColumn({ name: 'dept_id' })
   dept: Dept;
 }
+
+

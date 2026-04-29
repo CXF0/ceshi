@@ -88,8 +88,8 @@ export class ContractService {
     return this.deserializeAttachments(saved);
   }
 
-  async update(id: string | number, body: any): Promise<any> {
-    const contract = await this.contractRepo.findOne({ where: { id: String(id) } as any });
+  async update(id: number, body: any): Promise<any> {
+    const contract = await this.contractRepo.findOne({ where: { id: Number(id) } as any });
     if (!contract) throw new NotFoundException(`未找到合同 ${id}`);
     const { customer: _c, dept: _d, id: _id, createTime: _ct, updateTime: _ut, attachments, ...updateData } = body;
     if (attachments !== undefined) {
@@ -100,8 +100,8 @@ export class ContractService {
     return this.deserializeAttachments(saved);
   }
 
-  async updateStatus(id: string, newStatus: string) {
-    const contract = await this.contractRepo.findOne({ where: { id: String(id) } as any });
+  async updateStatus(id: number, newStatus: string) {
+    const contract = await this.contractRepo.findOne({ where: { id: Number(id) } as any });
     if (!contract) throw new NotFoundException(`合同 ${id} 不存在`);
     const allowed = STATUS_FLOW[contract.status] || [];
     if (!allowed.includes(newStatus)) {
@@ -111,10 +111,10 @@ export class ContractService {
     return this.contractRepo.save(contract);
   }
 
-  async remove(id: string | number): Promise<void> {
-    const exists = await this.contractRepo.findOne({ where: { id: String(id) } as any });
+  async remove(id: number): Promise<void> {
+    const exists = await this.contractRepo.findOne({ where: { id: Number(id) } as any });
     if (!exists) throw new NotFoundException(`未找到合同 ${id}`);
-    await this.contractRepo.delete(String(id));
+    await this.contractRepo.delete(Number(id));
   }
 
   private deserializeAttachments(contract: CrmContract): any {

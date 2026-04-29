@@ -33,7 +33,7 @@ export class FinPaymentsService {
     let deptId = body.deptId;
     if (!deptId && body.contractId) {
       const contract = await this.contractRepo.findOne({
-        where: { id: String(body.contractId) } as any,
+        where: { id: Number(body.contractId) } as any,
       });
       deptId = contract?.deptId;
     }
