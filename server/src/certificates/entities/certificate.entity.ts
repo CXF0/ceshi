@@ -1,7 +1,7 @@
 /**
  * @file server/src/certificates/entities/certificate.entity.ts
- * @version 2.0.0 [2026-04-28]
- * @desc 补充 ManyToOne 关联 CrmCustomer，使 leftJoinAndSelect 生效
+ * @version 2.1.0 [2026-05-03]
+ * @desc 新增 contract_id 字段，支持从合同维度录入关联证书
  */
 import {
   Column, Entity, PrimaryColumn,
@@ -21,6 +21,10 @@ export class Certificate {
 
   @Column({ name: 'category_id', type: 'int', comment: '关联认证类型ID' })
   category_id: number;
+
+  // ✅ 新增：关联合同ID，null 表示从证书管理独立录入，有值表示从合同详情页录入
+  @Column({ name: 'contract_id', type: 'int', nullable: true, comment: '关联合同ID，null表示非合同来源' })
+  contract_id: number | null;
 
   @Column({ name: 'certificate_number', type: 'varchar', length: 100, comment: '证书编号' })
   certificate_number: string;
@@ -50,7 +54,7 @@ export class Certificate {
   @JoinColumn({ name: 'category_id' })
   category: CertificationType;
 
-  /** ✅ 新增：关联客户表，获取客户名称 */
+  /** 关联客户表 */
   @ManyToOne(() => CrmCustomer)
   @JoinColumn({ name: 'customer_id' })
   customer: CrmCustomer;

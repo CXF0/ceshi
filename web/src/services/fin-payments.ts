@@ -1,6 +1,7 @@
 /**
  * @file web/src/services/fin-payments.ts
- * 对应后端 /api/fin-payments — 合同回款管理
+ * @version 2.1.0 [2026-05-03]
+ * @desc 新增 invoiceUrl 发票附件字段
  */
 import request from '@/utils/request';
 
@@ -13,6 +14,7 @@ export interface FinPaymentItem {
   amountPaid?: number;   // 实收金额
   isInvoiced?: number;   // 是否开票：0-否, 1-是
   paymentDate?: string;  // 实际收款日期 YYYY-MM-DD
+  invoiceUrl?: string;   // ✅ 新增：发票附件地址
 }
 
 export interface PaymentSummary {
@@ -42,7 +44,7 @@ export function createPayment(data: FinPaymentItem) {
   return request.post('/fin-payments', data);
 }
 
-/** 更新回款记录（标记收款/开票） */
+/** 更新回款记录（标记收款/开票/上传发票） */
 export function updatePayment(id: string, data: Partial<FinPaymentItem>) {
   return request.put(`/fin-payments/${id}`, data);
 }

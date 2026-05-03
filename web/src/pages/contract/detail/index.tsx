@@ -1,7 +1,7 @@
 /**
  * @file web/src/pages/contract/detail/index.tsx
- * @version 2.0.0 [2026-04-28]
- * @desc 合同详情独立页：基本信息 + 状态流转 + 回款管理 + 多附件管理
+ * @version 3.0.0 [2026-05-03]
+ * @desc 新增：证照附件区块（合同附件下方）+ 录入证书Modal（自动带出主体/类型）+ 回款阶段发票附件上传
  */
 import React, { useState, useEffect } from 'react';
 import {
@@ -16,10 +16,11 @@ import {
   PlusOutlined, DeleteOutlined, CheckOutlined, PaperClipOutlined,
   UploadOutlined, EyeOutlined, FileTextOutlined, DollarOutlined,
   CalendarOutlined, UserOutlined, SafetyCertificateOutlined,
-  DownloadOutlined,
+  DownloadOutlined, FileDoneOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import { v4 as uuidv4 } from 'uuid';
 import request from '@/utils/request';
 import PermButton from '@/components/PermButton';
 import {
@@ -40,6 +41,13 @@ const paymentTypeMap: Record<string, string> = {
   stage_4: '分4阶段', stage_5: '分5阶段',
 };
 
+const certStatusMap: Record<string, [string, string]> = {
+  valid:    ['green',   '有效'],
+  expiring: ['orange',  '即将到期'],
+  expired:  ['red',     '已过期'],
+  revoked:  ['default', '已撤销'],
+};
+
 const ContractDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -47,6 +55,8 @@ const ContractDetail: React.FC = () => {
   const [contract, setContract]     = useState<any>(null);
   const [loading, setLoading]       = useState(true);
   const [certMap, setCertMap]       = useState<Record<string, { typeName: string; parentName: string }>>({});
+  // certType code => category_id 映射（用于录入证书时自动填 category_id）
+  const [certCodeToId, setCertCodeToId] = useState<Record<string, number>>({});
 
   // 回款
   const [payments, setPayments]     = useState<FinPaymentItem[]>([]);
@@ -62,6 +72,17 @@ const ContractDetail: React.FC = () => {
   // 状态流转
   const [statusUpdating, setStatusUpdating] = useState(false);
 
+  // ✅ 证照附件
+  const [contractCerts, setContractCerts] = useState<any[]>([]);
+  const [certModalOpen, setCertModalOpen] = useState(false);
+  const [certSubmitting, setCertSubmitting] = useState(false);
+  const [certForm] = Form.useForm();
+  const [certFileUrl, setCertFileUrl] = useState('');
+  const [certFileList, setCertFileList] = useState<any[]>([]);
+
+  // ✅ 发票上传 loading 状态
+  const [invoiceUploading, setInvoiceUploading] = useState<Record<string, boolean>>({});
+
   // ── 加载合同详情 ──────────────────────────────────────
   const loadContract = async () => {
     if (!id) return;
@@ -70,10 +91,8 @@ const ContractDetail: React.FC = () => {
       const res: any = await request.get(`/contracts/${id}`);
       const data = res.data?.data || res.data || res;
       setContract(data);
-      // 解析附件
       const atts = Array.isArray(data.attachments) ? data.attachments
         : (data.attachments ? JSON.parse(data.attachments) : []);
-      // 兼容旧单附件
       if (data.attachmentUrl && !atts.some((a: any) => a.url === data.attachmentUrl)) {
         atts.unshift({ name: data.attachmentUrl.split('/').pop(), url: data.attachmentUrl });
       }
@@ -88,31 +107,43 @@ const ContractDetail: React.FC = () => {
       const res: any = await request.get('/cert-types');
       const rawList: any[] = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : res?.data?.data || [];
       const tMap: Record<string, { typeName: string; parentName: string }> = {};
+      const codeToId: Record<string, number> = {};
       rawList.forEach(item => {
         tMap[item.type_code] = { typeName: item.type_name, parentName: item.parent_name };
+        codeToId[item.type_code] = item.id;
       });
       setCertMap(tMap);
+      setCertCodeToId(codeToId);
     } catch {}
   };
 
   // ── 加载回款记录 ─────────────────────────────────────
   const loadPayments = async () => {
-  if (!id) return;
-  setPayLoading(true);
-  try {
-    const res: any = await getPaymentsByContract(id);
-    // request 拦截器返回完整 axios 响应，后端结构为 { code, data: [] }
-    // 实际数组在 res.data.data
-    const list = res?.data?.data ?? res?.data ?? res ?? [];
-    setPayments(Array.isArray(list) ? list : []);
-  } catch { message.error('加载回款记录失败'); }
-  finally { setPayLoading(false); }
-};
+    if (!id) return;
+    setPayLoading(true);
+    try {
+      const res: any = await getPaymentsByContract(id);
+      const list = res?.data?.data ?? res?.data ?? res ?? [];
+      setPayments(Array.isArray(list) ? list : []);
+    } catch { message.error('加载回款记录失败'); }
+    finally { setPayLoading(false); }
+  };
+
+  // ✅ 加载合同关联证照
+  const loadContractCerts = async () => {
+    if (!id) return;
+    try {
+      const res: any = await request.get('/certificates', { params: { contract_id: id } });
+      const list = res?.data?.data?.items ?? res?.data?.items ?? res?.data ?? [];
+      setContractCerts(Array.isArray(list) ? list : []);
+    } catch { message.error('加载证照失败'); }
+  };
 
   useEffect(() => {
     loadContract();
     loadCertMap();
     loadPayments();
+    loadContractCerts();
   }, [id]);
 
   // ── 状态流转 ──────────────────────────────────────────
@@ -130,7 +161,7 @@ const ContractDetail: React.FC = () => {
     } finally { setStatusUpdating(false); }
   };
 
-  // ── 附件上传 ──────────────────────────────────────────
+  // ── 合同附件上传 ──────────────────────────────────────
   const handleUpload = async (file: File) => {
     setUploading(true);
     try {
@@ -142,12 +173,11 @@ const ContractDetail: React.FC = () => {
       const fileData = res.data?.data || res.data || res;
       const newAtts = [...attachments, { name: fileData.name || file.name, url: fileData.url, size: fileData.size }];
       setAttachments(newAtts);
-      // 同步保存到合同
       await request.put(`/contracts/${id}`, { attachments: newAtts });
       message.success('附件上传成功');
     } catch { message.error('上传失败'); }
     finally { setUploading(false); }
-    return false; // 阻止默认行为
+    return false;
   };
 
   const handleDeleteAttachment = async (url: string) => {
@@ -207,48 +237,149 @@ const ContractDetail: React.FC = () => {
     } catch { message.error('删除失败'); }
   };
 
+  // ✅ 发票附件上传
+  const handleInvoiceUpload = async (paymentId: string, file: File) => {
+    setInvoiceUploading(prev => ({ ...prev, [paymentId]: true }));
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res: any = await request.post('/contracts/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileData = res.data?.data || res.data || res;
+      const invoiceUrl = fileData.url;
+      await updatePayment(paymentId, { invoiceUrl } as any);
+      message.success('发票上传成功');
+      loadPayments();
+    } catch { message.error('发票上传失败'); }
+    finally { setInvoiceUploading(prev => ({ ...prev, [paymentId]: false })); }
+    return false;
+  };
+
+  // ✅ 录入证书提交
+  const handleCertSubmit = async () => {
+    let values: any;
+    try { values = await certForm.validateFields(); } catch { return; }
+    if (!contract) return;
+
+    setCertSubmitting(true);
+    try {
+      const categoryId = certCodeToId[contract.certType];
+      await request.post('/certificates', {
+        id: uuidv4(),
+        customer_id: String(contract.customer?.id || contract.customerId),
+        category_id: categoryId,
+        contract_id: Number(id),           // ✅ 关联当前合同
+        certificate_number: values.certificate_number,
+        issuer: values.issuer || null,
+        issue_date: values.issue_date?.format('YYYY-MM-DD') || null,
+        expiry_date: values.expiry_date?.format('YYYY-MM-DD') || null,
+        file_url: certFileUrl || null,
+      });
+      message.success('证书录入成功，已关联当前合同及证书管理');
+      setCertModalOpen(false);
+      certForm.resetFields();
+      setCertFileUrl('');
+      setCertFileList([]);
+      loadContractCerts();
+    } catch (e: any) {
+      message.error(e?.response?.data?.message || '录入失败');
+    } finally {
+      setCertSubmitting(false);
+    }
+  };
+
   // ── 回款统计 ─────────────────────────────────────────
   const totalDue  = payments.reduce((s, p) => s + (p.amountDue || 0), 0);
-const totalPaid = payments.reduce((s, p) => s + (p.amountPaid || 0), 0);
-// 进度以合同总额为分母，避免回款阶段金额超出合同额时显示异常
-const contractTotal = Number(contract?.totalAmount) || 0;
-const paidRate = contractTotal > 0
-  ? Math.min(Math.round((totalPaid / contractTotal) * 100), 100)
-  : (totalDue > 0 ? Math.min(Math.round((totalPaid / totalDue) * 100), 100) : 0);
+  const totalPaid = payments.reduce((s, p) => s + (p.amountPaid || 0), 0);
+  const contractTotal = Number(contract?.totalAmount) || 0;
+  const paidRate = contractTotal > 0
+    ? Math.min(Math.round((totalPaid / contractTotal) * 100), 100)
+    : (totalDue > 0 ? Math.min(Math.round((totalPaid / totalDue) * 100), 100) : 0);
 
-  // ── 回款表格列 ────────────────────────────────────────
+  // ── 回款表格列（含发票附件列）────────────────────────
   const payColumns: ColumnsType<FinPaymentItem> = [
-    { title: '阶段名称', dataIndex: 'phaseName', width: 120 },
+    { title: '阶段', dataIndex: 'phaseName', width: 100 },
     {
-      title: '应收金额', dataIndex: 'amountDue', width: 120,
-      render: v => <span style={{ color: '#cf1322', fontWeight: 600 }}>¥{Number(v).toLocaleString()}</span>,
+      title: '应收', dataIndex: 'amountDue', width: 100,
+      render: v => <span style={{ color: '#cf1322', fontWeight: 400 }}>¥{Number(v).toLocaleString()}</span>,
     },
     {
-      title: '实收金额', dataIndex: 'amountPaid', width: 120,
+      title: '实收', dataIndex: 'amountPaid', width: 100,
       render: (v, record) => (
-        <span style={{ color: (record.amountPaid || 0) >= (record.amountDue || 0) ? '#52c41a' : '#faad14', fontWeight: 600 }}>
+        <span style={{ color: (record.amountPaid || 0) >= (record.amountDue || 0) ? '#52c41a' : '#faad14', fontWeight: 400 }}>
           ¥{Number(v || 0).toLocaleString()}
         </span>
       ),
     },
     {
-      title: '是否开票', dataIndex: 'isInvoiced', width: 90,
+      title: '开票', dataIndex: 'isInvoiced', width: 80,
       render: v => v === 1 ? <Tag color="green">已开票</Tag> : <Tag color="default">未开票</Tag>,
     },
     {
-      title: '收款日期', dataIndex: 'paymentDate', width: 110,
+      title: '收款日期', dataIndex: 'paymentDate', width: 140,
       render: v => v || <span style={{ color: '#d9d9d9' }}>未收款</span>,
     },
     {
-      title: '操作', key: 'action', width: 120,
+      // ✅ 新增：发票附件列
+      title: '发票', dataIndex: 'invoiceUrl', width: 130,
+      render: (url: string, record: any) => (
+        <Space size={4}>
+          {url && (
+            <Tooltip title="查看发票">
+              <Button
+                type="link" size="small" icon={<EyeOutlined />}
+                onClick={() => window.open(url, '_blank')}
+              />
+            </Tooltip>
+          )}
+          <Upload
+            showUploadList={false}
+            beforeUpload={(file) => handleInvoiceUpload(record.id, file)}
+            accept=".pdf,.jpg,.jpeg,.png"
+          >
+            <Button
+              type="link" size="small"
+              icon={<UploadOutlined />}
+              loading={invoiceUploading[record.id]}
+            >
+              {url ? '替换' : '上传'}
+            </Button>
+          </Upload>
+        </Space>
+      ),
+    },
+    {
+      title: '操作', key: 'action', width: 80,
       render: (_, record) => (
         <Space size={0} split={<Divider type="vertical" />}>
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openPayModal(record)}>编辑</Button>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openPayModal(record)}></Button>
           <Popconfirm title="确认删除此回款记录？" onConfirm={() => handlePayDelete(record.id!)} okType="danger">
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}></Button>
           </Popconfirm>
         </Space>
       ),
+    },
+  ];
+
+  // ✅ 证照表格列
+  const certColumns: ColumnsType<any> = [
+    { title: '证书编号', dataIndex: 'certificate_number', width: 150 },
+    { title: '颁发机构', dataIndex: 'issuer', width: 150, render: v => v || '--' },
+    { title: '颁发日期', dataIndex: 'issue_date', width: 105 },
+    { title: '到期日期', dataIndex: 'expiry_date', width: 105 },
+    {
+      title: '状态', dataIndex: 'status', width: 90,
+      render: (s: string) => {
+        const cfg = certStatusMap[s] || ['default', s];
+        return <Tag color={cfg[0]}>{cfg[1]}</Tag>;
+      },
+    },
+    {
+      title: '附件', dataIndex: 'file_url', width: 70,
+      render: (url: string) => url
+        ? <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => window.open(url, '_blank')} />
+        : <span style={{ color: '#d9d9d9' }}>—</span>,
     },
   ];
 
@@ -273,9 +404,7 @@ const paidRate = contractTotal > 0
               <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/contract')}>返回列表</Button>
               <Divider type="vertical" />
               <FileTextOutlined style={{ color: '#71ccbc', fontSize: 18 }} />
-              <span style={{ fontSize: 16, fontWeight: 600 }}>
-                {contract.contractNo}
-              </span>
+              <span style={{ fontSize: 16, fontWeight: 600 }}>{contract.contractNo}</span>
               <Tag color={statusCfg.color}>{statusCfg.label}</Tag>
             </Space>
           </Col>
@@ -311,7 +440,7 @@ const paidRate = contractTotal > 0
       </Card>
 
       <Row gutter={16}>
-        {/* ── 左列：基本信息 + 附件 ── */}
+        {/* ── 左列：基本信息 + 合同附件 + 证照附件 ── */}
         <Col xs={24} lg={14}>
           {/* 基本信息 */}
           <Card
@@ -362,10 +491,10 @@ const paidRate = contractTotal > 0
             </Descriptions>
           </Card>
 
-          {/* 附件管理 */}
+          {/* 合同附件 */}
           <Card
             bordered={false}
-            style={{ borderRadius: 12 }}
+            style={{ borderRadius: 12, marginBottom: 16 }}
             title={<Space><PaperClipOutlined style={{ color: '#71ccbc' }} />合同附件</Space>}
             extra={
               <PermButton perm="/contract:upload" type="dashed" size="small" icon={<UploadOutlined />} asChild>
@@ -374,12 +503,7 @@ const paidRate = contractTotal > 0
                   beforeUpload={handleUpload}
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png,.zip"
                 >
-                  <Button
-                    type="dashed"
-                    size="small"
-                    icon={<UploadOutlined />}
-                    loading={uploading}
-                  >
+                  <Button type="dashed" size="small" icon={<UploadOutlined />} loading={uploading}>
                     上传附件
                   </Button>
                 </Upload>
@@ -408,19 +532,11 @@ const paidRate = contractTotal > 0
                     </Space>
                     <Space>
                       <Tooltip title="预览/下载">
-                        <Button
-                          type="link" size="small" icon={<EyeOutlined />}
-                          onClick={() => window.open(att.url, '_blank')}
-                        />
+                        <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => window.open(att.url, '_blank')} />
                       </Tooltip>
                       <Tooltip title="下载">
-                        <Button
-                          type="link" size="small" icon={<DownloadOutlined />}
-                          onClick={() => {
-                            const a = document.createElement('a');
-                            a.href = att.url; a.download = att.name; a.click();
-                          }}
-                        />
+                        <Button type="link" size="small" icon={<DownloadOutlined />}
+                          onClick={() => { const a = document.createElement('a'); a.href = att.url; a.download = att.name; a.click(); }} />
                       </Tooltip>
                       <Popconfirm title="确认移除该附件？" onConfirm={() => handleDeleteAttachment(att.url)} okType="danger">
                         <Button type="link" size="small" danger icon={<DeleteOutlined />} />
@@ -429,6 +545,40 @@ const paidRate = contractTotal > 0
                   </div>
                 ))}
               </div>
+            )}
+          </Card>
+
+          {/* ✅ 证照附件（合同附件下方） */}
+          <Card
+            bordered={false}
+            style={{ borderRadius: 12, marginBottom: 16 }}
+            title={<Space><FileDoneOutlined style={{ color: '#71ccbc' }} />证照附件<Badge count={contractCerts.length} style={{ backgroundColor: '#71ccbc' }} /></Space>}
+            extra={
+              <PermButton perm="/contract:edit" type="primary" ghost size="small" icon={<PlusOutlined />}
+                onClick={() => {
+                  certForm.resetFields();
+                  setCertFileUrl('');
+                  setCertFileList([]);
+                  setCertModalOpen(true);
+                }}
+              >
+                录入证书
+              </PermButton>
+            }
+          >
+            {contractCerts.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#bbb', padding: '20px 0' }}>
+                暂无关联证照，点击「录入证书」添加
+              </div>
+            ) : (
+              <Table
+                size="small"
+                dataSource={contractCerts}
+                rowKey="id"
+                columns={certColumns}
+                pagination={false}
+                scroll={{ x: 600 }}
+              />
             )}
           </Card>
         </Col>
@@ -492,13 +642,7 @@ const paidRate = contractTotal > 0
               </Space>
             }
             extra={
-              <PermButton
-                perm="/contract:edit"
-                type="primary"
-                size="small"
-                icon={<PlusOutlined />}
-                onClick={() => openPayModal()}
-              >
+              <PermButton perm="/contract:edit" type="primary" size="small" icon={<PlusOutlined />} onClick={() => openPayModal()}>
                 新增阶段
               </PermButton>
             }
@@ -510,7 +654,7 @@ const paidRate = contractTotal > 0
               loading={payLoading}
               size="small"
               pagination={false}
-              scroll={{ x: 500 }}
+              scroll={{ x: 600 }}
               locale={{ emptyText: '暂无回款记录，点击「新增阶段」添加' }}
             />
           </Card>
@@ -555,6 +699,90 @@ const paidRate = contractTotal > 0
               </Form.Item>
             </Col>
           </Row>
+        </Form>
+      </Modal>
+
+      {/* ✅ 录入证书 Modal（自动带出合同主体和认证类型） */}
+      <Modal
+        title="录入证书（关联当前合同）"
+        open={certModalOpen}
+        onOk={handleCertSubmit}
+        onCancel={() => { setCertModalOpen(false); certForm.resetFields(); setCertFileUrl(''); setCertFileList([]); }}
+        confirmLoading={certSubmitting}
+        width={600}
+        destroyOnClose
+        okText="确认录入"
+      >
+        <Form form={certForm} layout="vertical" style={{ marginTop: 16 }}>
+          {/* ✅ 只读展示：认证主体（自动带出） */}
+          <Form.Item label="认证主体">
+            <Input
+              value={contract?.customer?.name || '--'}
+              disabled
+              style={{ background: '#fafafa', color: '#595959' }}
+            />
+          </Form.Item>
+
+          {/* ✅ 只读展示：认证类型（与合同同类型） */}
+          <Form.Item label="认证类型">
+            <Input
+              value={certInfo ? `${certInfo.parentName} / ${certInfo.typeName}` : (contract?.certType || '--')}
+              disabled
+              style={{ background: '#fafafa', color: '#595959' }}
+            />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="certificate_number" label="证书编号" rules={[{ required: true, message: '请输入证书编号' }]}>
+                <Input placeholder="如：ZD-2026-001" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="issuer" label="颁发机构">
+                <Input placeholder="颁发机构全称" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="issue_date" label="颁发日期" rules={[{ required: true, message: '请选择颁发日期' }]}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="expiry_date" label="到期日期" rules={[{ required: true, message: '请选择到期日期' }]}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item label="证书附件（可选）">
+            <Upload
+              showUploadList={true}
+              fileList={certFileList}
+              beforeUpload={async (file) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                  const res: any = await request.post('/contracts/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                  });
+                  const fileData = res.data?.data || res.data || res;
+                  setCertFileUrl(fileData.url);
+                  setCertFileList([{ uid: '-1', name: file.name, status: 'done', url: fileData.url }]);
+                  message.success('附件上传成功');
+                } catch { message.error('上传失败'); }
+                return false;
+              }}
+              onRemove={() => { setCertFileUrl(''); setCertFileList([]); }}
+              maxCount={1}
+              accept=".pdf,.jpg,.jpeg,.png"
+            >
+              <Button icon={<UploadOutlined />}>上传证书图片/扫描件</Button>
+            </Upload>
+          </Form.Item>
         </Form>
       </Modal>
     </div>

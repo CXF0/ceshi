@@ -1,10 +1,7 @@
 /**
  * @file server/src/certificates/certificates.service.ts
- * @version 2.1.0 [2026-04-28]
- * @desc
- *  - update/create 时自动根据 expiry_date 计算并写入 status，不依赖前端传值
- *  - 定时任务每日 00:01 批量更新状态
- *  - expiring 阈值优先从 certification_type.remind_days 读取，回退到 30 天
+ * @version 2.2.0 [2026-05-03]
+ * @desc 新增按 contract_id 查询支持，其余逻辑不变
  */
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -85,7 +82,11 @@ export class CertificatesService {
 
   // ── 列表查询 ──────────────────────────────────────────
   async findAll(query: any) {
-    const { customerName, certificate_number, category_id, status, expiryStart, expiryEnd, customer_id } = query;
+    const {
+      customerName, certificate_number, category_id, status,
+      expiryStart, expiryEnd, customer_id,
+      contract_id, // ✅ 新增：支持按合同ID过滤
+    } = query;
     const page     = Number(query.page)     || 1;
     const pageSize = Number(query.pageSize) || 20;
 
@@ -100,6 +101,11 @@ export class CertificatesService {
     if (customerName)       qb.andWhere('customer.name LIKE :name', { name: `%${customerName}%` });
     if (expiryStart)        qb.andWhere('cert.expiry_date >= :expiryStart', { expiryStart });
     if (expiryEnd)          qb.andWhere('cert.expiry_date <= :expiryEnd', { expiryEnd });
+
+    // ✅ 新增：按合同ID过滤（用于合同详情页加载证照附件）
+    if (contract_id !== undefined && contract_id !== null && contract_id !== '') {
+      qb.andWhere('cert.contract_id = :contract_id', { contract_id: Number(contract_id) });
+    }
 
     qb.orderBy('cert.expiry_date', 'ASC')
       .skip((page - 1) * pageSize)
@@ -126,9 +132,8 @@ export class CertificatesService {
     const exists = await this.repo.findOne({ where: { id: id as any } });
     if (!exists) throw new NotFoundException('证书不存在');
 
-    const { status: _ignored, ...rest } = body; // 忽略前端传来的 status
+    const { status: _ignored, ...rest } = body;
 
-    // 以最新的 expiry_date（前端传来的或数据库已有的）重新计算
     const expiryDate = rest.expiry_date || exists.expiry_date;
     const computedStatus = calcStatus(expiryDate);
 
