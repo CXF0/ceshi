@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons';
 import request from '@/utils/request';
 import dayjs from 'dayjs';
+import PermButton from '@/components/PermButton';
 
 // ── 角色颜色映射 ──────────────────────────────────────
 const ROLE_COLOR: Record<string, string> = {
@@ -44,6 +45,7 @@ const PERMISSION_TREE: DataNode[] = [
           { title: '新增客户', key: '/crm:add' },
           { title: '编辑客户', key: '/crm:edit' },
           { title: '查看详情', key: '/crm:view' },
+          { title: '删除客户', key: '/crm:delete' },
         ],
       },
     ],
@@ -111,6 +113,11 @@ const PERMISSION_TREE: DataNode[] = [
           { title: '配置权限', key: '/system/roles:permission' },
         ],
       },
+      { title: '公司管理', key: '/system/depts', children: [
+  { title: '新增公司', key: '/system/depts:add' },
+  { title: '编辑公司', key: '/system/depts:edit' },
+  { title: '删除公司', key: '/system/depts:delete' },
+]},
     ],
   },
 ];
@@ -441,15 +448,15 @@ const RoleList: React.FC = () => {
       fixed: 'right' as const,
       render: (_: any, record: any) => (
         <Space size={0} split={<Divider type="vertical" style={{ margin: '0 2px' }} />}>
-          <Button
+          <PermButton perm="/system/roles:edit"
             type="link" size="small" icon={<EditOutlined />}
             onClick={() => openEdit(record)}
-          >编辑</Button>
-          <Button
+          >编辑</PermButton>
+          <PermButton perm="/system/roles:permission"
             type="link" size="small" icon={<SettingOutlined />}
             style={{ color: '#722ed1' }}
             onClick={() => openPermDrawer(record)}
-          >权限</Button>
+          >权限</PermButton>
           <Popconfirm
             title="确定删除该角色吗？"
             description="有关联用户时删除会失败"
@@ -457,11 +464,11 @@ const RoleList: React.FC = () => {
             okType="danger"
             disabled={record.roleKey === 'admin'}
           >
-            <Button
+            <PermButton perm="/system/roles:delete"
               type="link" size="small" danger
               disabled={record.roleKey === 'admin'}
               icon={<DeleteOutlined />}
-            >删除</Button>
+            >删除</PermButton>
           </Popconfirm>
         </Space>
       ),
@@ -490,9 +497,9 @@ const RoleList: React.FC = () => {
             </Space>
           </Col>
           <Col flex="auto" style={{ textAlign: 'right' }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
+            <PermButton perm="/system/roles:add" type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
               新增角色
-            </Button>
+            </PermButton>
           </Col>
         </Row>
       </Card>

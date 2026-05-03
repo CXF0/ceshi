@@ -9,7 +9,7 @@ import {
 } from 'react-router-dom';
 import {
   UserOutlined, LogoutOutlined, BellOutlined,
-  MenuFoldOutlined, MenuUnfoldOutlined, HomeOutlined
+  MenuFoldOutlined, MenuUnfoldOutlined, HomeOutlined, VerifiedOutlined
 } from '@ant-design/icons';
 import {
   Layout, ConfigProvider, Button, Space, Badge, Avatar, Breadcrumb, Tabs
@@ -63,6 +63,7 @@ export const getBreadcrumbTitle = (path: string) => {
 
 // ─── 后台管理布局（需登录） ───
 const AppLayout: React.FC = () => {
+  const slogan = '让认证更简单！';
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -115,13 +116,21 @@ const AppLayout: React.FC = () => {
     <Layout className="modern-glass-layout">
       <Sider width={220} trigger={null} collapsible collapsed={collapsed} className="modern-sider">
         <div className="modern-logo-section">
-          <div className="modern-logo-mark" />
+          <div className="modern-logo-mark"><VerifiedOutlined className="modern-logo-icon" /></div>
           {!collapsed && (
             <div className="modern-logo-text">
               正达认证
               <br />
-              <span style={{ fontSize: 10, fontWeight: 400, color: '#93aac9', fontStyle: 'normal', letterSpacing: '0.05em' }}>
-                CRM V1.0
+               <span className="modern-logo-slogan" aria-label={slogan}>
+                {Array.from(slogan).map((char, index) => (
+                  <span
+                    key={`${char}-${index}`}
+                    className="modern-logo-slogan-char"
+                    style={{ animationDelay: `${index * 0.08}s` }}
+                  >
+                    {char}
+                  </span>
+                ))}
               </span>
             </div>
           )}

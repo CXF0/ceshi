@@ -16,6 +16,11 @@
 
 /* ─── 1. 基础重置（不再锁定滚动，交给各页面控制） ─── */
 html, body, #root {
+
+
+
+
+  
   margin: 0;
   padding: 0;
   width: 100%;
@@ -95,18 +100,27 @@ html, body, #root {
 }
 
 .modern-logo-mark {
-  width: 34px; height: 34px;
+  width: 40px; height: 40px;
   background: var(--primary-blue);
   border-radius: 10px;
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
   flex-shrink: 0;
+    display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modern-logo-icon {
+  font-size: 30px;
+  color: #fff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
 .modern-logo-text {
   font-family: 'Inter', sans-serif;
-  font-weight: 800;
-  font-style: italic;
-  font-size: 14px;
+  font-weight: 1000;
+  font-style: bold;
+  font-size: 18px;
   letter-spacing: -0.02em;
   color: var(--primary-blue);
   line-height: 1.2;

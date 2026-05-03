@@ -1,7 +1,7 @@
 /**
  * @file web/src/pages/system/users/UserList.tsx
- * @version 3.1.0 [2026-04-29]
- * @desc 新增业绩目标字段：是否设定目标 + 月度目标金额
+ * @version 3.2.0 [2026-04-29]
+ * @desc 接入 PermButton 权限控制
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons';
 import request from '@/utils/request';
 import { useDeptOptions } from '@/hooks/useDeptOptions';
+import PermButton from '@/components/PermButton';
 import dayjs from 'dayjs';
 
 const ROLE_COLOR: Record<string, string> = {
@@ -36,11 +37,8 @@ const UserList: React.FC = () => {
   const [searchStatus, setSearchStatus] = useState<number | undefined>();
 
   const { deptOptions, deptMap } = useDeptOptions();
-
   const [form]    = Form.useForm();
   const [pwdForm] = Form.useForm();
-
-  // 监听"是否设定目标"控制金额是否显示
   const hasSalesTarget = Form.useWatch('hasSalesTarget', form);
 
   const loadRoles = useCallback(async () => {
@@ -142,8 +140,7 @@ const UserList: React.FC = () => {
 
   const columns = [
     {
-      title: '用户',
-      key: 'user', width: 120,
+      title: '用户', key: 'user', width: 200,
       render: (_: any, record: any) => (
         <Space>
           <Avatar size={36} style={{ backgroundColor: '#71ccbc', flexShrink: 0 }} icon={<UserOutlined />} />
@@ -155,17 +152,17 @@ const UserList: React.FC = () => {
       ),
     },
     {
-      title: '手机号', dataIndex: 'phone', key: 'phone', width: 100,
+      title: '手机号', dataIndex: 'phone', width: 130,
       render: (v: string) => v
         ? <span><PhoneOutlined style={{ marginRight: 4 }} />{v}</span>
         : <span style={{ color: '#d9d9d9' }}>未填写</span>,
     },
     {
-      title: '所属分公司', dataIndex: 'deptId', key: 'deptId', width: 180,
+      title: '所属分公司', dataIndex: 'deptId', width: 140,
       render: (id: string) => deptMap[id] || `部门${id}`,
     },
     {
-      title: '拥有角色', key: 'roles', width: 160,
+      title: '拥有角色', key: 'roles', width: 200,
       render: (_: any, record: any) => {
         const list: any[] = record.roles || [];
         if (!list.length) return <Tag color="default">暂无角色</Tag>;
@@ -173,7 +170,7 @@ const UserList: React.FC = () => {
       },
     },
     {
-      title: '业绩目标', key: 'target', width: 120,
+      title: '业绩目标', key: 'target', width: 130,
       render: (_: any, record: any) => {
         if (!record.hasSalesTarget) return <span style={{ color: '#d9d9d9' }}>未设定</span>;
         return (
@@ -187,7 +184,7 @@ const UserList: React.FC = () => {
       },
     },
     {
-      title: '状态', dataIndex: 'status', key: 'status', width: 80,
+      title: '状态', dataIndex: 'status', width: 90,
       render: (status: number, record: any) => (
         <Tooltip title={status === 1 ? '点击禁用' : '点击启用'}>
           <Tag icon={status === 1 ? <CheckCircleOutlined /> : <StopOutlined />}
@@ -200,19 +197,20 @@ const UserList: React.FC = () => {
       ),
     },
     {
-      title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 80,
+      title: '创建时间', dataIndex: 'createdAt', width: 110,
       render: (d: string) => d ? dayjs(d).format('YYYY-MM-DD') : '—',
     },
     {
       title: '操作', key: 'action', width: 160, fixed: 'right' as const,
       render: (_: any, record: any) => (
         <Space size={0} split={<Divider type="vertical" />}>
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>编辑</Button>
-          <Tooltip title="重置密码">
-            <Button type="link" size="small" icon={<KeyOutlined />} onClick={() => openResetPwd(record)}>密码</Button>
-          </Tooltip>
+          <PermButton perm="/system/users:edit" type="link" size="small"
+            icon={<EditOutlined />} onClick={() => openEdit(record)}>编辑</PermButton>
+          <PermButton perm="/system/users:resetpwd" type="link" size="small"
+            icon={<KeyOutlined />} onClick={() => openResetPwd(record)}>密码</PermButton>
           <Popconfirm title="确定删除该用户吗？" onConfirm={() => handleDelete(record.id)} okType="danger">
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
+            <PermButton perm="/system/users:delete" type="link" size="small" danger
+              icon={<DeleteOutlined />}>删除</PermButton>
           </Popconfirm>
         </Space>
       ),
@@ -243,7 +241,9 @@ const UserList: React.FC = () => {
             </Space>
           </Col>
           <Col flex="auto" style={{ textAlign: 'right' }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>新增用户</Button>
+            <PermButton perm="/system/users:add" type="primary" icon={<PlusOutlined />} onClick={() => openEdit()}>
+              新增用户
+            </PermButton>
           </Col>
         </Row>
       </Card>
@@ -254,7 +254,6 @@ const UserList: React.FC = () => {
           pagination={{ pageSize: 10, showSizeChanger: true, showTotal: t => `共 ${t} 位用户` }} />
       </Card>
 
-      {/* 新增/编辑 Modal */}
       <Modal title={<Space><UserOutlined />{editingId ? '编辑用户' : '新增用户'}</Space>}
         open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)}
         width={580} destroyOnClose okText="确认保存">
@@ -311,8 +310,6 @@ const UserList: React.FC = () => {
               ))}
             </Select>
           </Form.Item>
-
-          {/* 业绩目标 */}
           <Divider style={{ margin: '8px 0 16px' }}>业绩目标（可选）</Divider>
           <Row gutter={16} align="middle">
             <Col span={10}>
@@ -333,7 +330,6 @@ const UserList: React.FC = () => {
         </Form>
       </Modal>
 
-      {/* 重置密码 Modal */}
       <Modal title={<Space><LockOutlined style={{ color: '#faad14' }} />重置密码 — {pwdTargetName}</Space>}
         open={pwdModalOpen} onOk={handleResetPwd} onCancel={() => setPwdModalOpen(false)}
         width={400} destroyOnClose okText="确认重置" okButtonProps={{ danger: true }}>
