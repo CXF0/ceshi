@@ -5,7 +5,7 @@
  */
 import {
   Controller, Get, Post, Put, Patch, Delete,
-  Param, Body, Query, UseGuards, Req, ParseIntPipe,
+  Param, Body, Query, UseGuards, Req, ParseIntPipe,BadRequestException,
 } from '@nestjs/common';
 import { CrmService } from './crm.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -48,6 +48,17 @@ export class CrmController {
     @Body('status') status: number,
   ) {
     return this.crmService.updateStatus(id, req.user, status);
+  }
+
+  @Post(':id/maintenances')
+  async addMaintenance(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+    @Body('content') content: string,
+  ) {
+    const normalizedContent = (content || '').trim();
+    if (!normalizedContent) throw new BadRequestException('维护内容不能为空');
+    return this.crmService.addMaintenance(id, req.user, normalizedContent);
   }
 
   @Get(':id')

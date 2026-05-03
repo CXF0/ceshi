@@ -14,6 +14,8 @@ export const CrmCustomerApi = {
   create: (data: any) => request.post('/crm/customers', data),
   update: (id: number, data: any) => request.put(`/crm/customers/${id}`, data),
   remove: (id: number) => request.delete(`/crm/customers/${id}`),
+  /** ✅ 新增：新增客户维护记录 */
+  addMaintenance: (id: number, content: string) => request.post(`/crm/customers/${id}/maintenances`, { content }),
 };
 
 /** 客户财务账户 API */

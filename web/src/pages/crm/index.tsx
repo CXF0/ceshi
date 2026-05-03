@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Table, Input, Card, Tag, message, Space, Row, Col,
   Select, Button, Drawer, Form, InputNumber, Descriptions,
-  Tabs, List, Empty, Typography, Spin, Modal, Tooltip,
+  Tabs, List, Empty, Typography, Spin, Modal, Tooltip, Timeline,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -61,6 +61,8 @@ interface CustomerAccount {
   isDefault: boolean;
 }
 
+interface MaintenanceRecord { id: number; maintainer: string; content: string; maintainedAt: string; }
+
 interface CustomerRecord {
   id: number;
   name: string;
@@ -76,6 +78,11 @@ interface CustomerRecord {
   level: string;
   status: number;
   accounts?: CustomerAccount[];
+  maintenances?: MaintenanceRecord[];
+  createdBy?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedAt?: string;
 }
 
 const TH = (label: string) => <span style={{ whiteSpace: 'nowrap' }}>{label}</span>;
@@ -94,6 +101,7 @@ const CustomerList: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [maintenanceForm] = Form.useForm();
 
   const [filterName, setFilterName]           = useState('');
   const [filterIndustry, setFilterIndustry]   = useState<string | undefined>();
@@ -480,6 +488,10 @@ const CustomerList: React.FC = () => {
                   <Descriptions.Item label="客户来源">{currentRow.source || '--'}</Descriptions.Item>
                   <Descriptions.Item label="人员规模">{currentRow.scaleCount} 人</Descriptions.Item>
                   <Descriptions.Item label="经营地址" span={2}>{currentRow.address || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="创建人">{currentRow.createdBy || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="创建时间">{currentRow.createdAt ? new Date(currentRow.createdAt).toLocaleString() : '--'}</Descriptions.Item>
+                  <Descriptions.Item label="更新人">{currentRow.updatedBy || '--'}</Descriptions.Item>
+                  <Descriptions.Item label="更新时间">{currentRow.updatedAt ? new Date(currentRow.updatedAt).toLocaleString() : '--'}</Descriptions.Item>
                 </Descriptions>
               </Tabs.TabPane>
 
@@ -541,6 +553,31 @@ const CustomerList: React.FC = () => {
                   locale={{ emptyText: <Empty description="暂无关联账户信息" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
                 />
                 <Button type="dashed" block icon={<PlusOutlined />} style={{ marginTop: 8 }}>新增账户</Button>
+              </Tabs.TabPane>
+                            <Tabs.TabPane tab={`维护记录 (${currentRow.maintenances?.length || 0})`} key="3">
+                <Form form={maintenanceForm} layout="inline" onFinish={async (v) => {
+                  if (!currentRow) return;
+                  await CrmCustomerApi.addMaintenance(currentRow.id, v.content);
+                  maintenanceForm.resetFields();
+                  message.success('维护记录已添加');
+                  handleShowDetail(currentRow);
+                }}>
+                  <Form.Item name="content" rules={[{ required: true, message: '请输入维护内容' }]} style={{ flex: 1 }}>
+                    <Input placeholder="请输入维护内容" />
+                  </Form.Item>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit">新增记录</Button>
+                  </Form.Item>
+                </Form>
+                <Timeline style={{ marginTop: 16 }}>
+                  {(currentRow.maintenances || []).map((item) => (
+                    <Timeline.Item key={item.id}>
+                      <div><Text strong>{item.maintainer}</Text> <Text type="secondary">{new Date(item.maintainedAt).toLocaleString()}</Text></div>
+                      <div>{item.content}</div>
+                    </Timeline.Item>
+                  ))}
+                </Timeline>
+                {(!currentRow.maintenances || currentRow.maintenances.length === 0) && <Empty description="暂无维护记录" />}
               </Tabs.TabPane>
             </Tabs>
           )}

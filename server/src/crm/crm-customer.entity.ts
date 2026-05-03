@@ -9,6 +9,7 @@ import {
   ManyToOne, JoinColumn,
 } from 'typeorm';
 import { CrmCustomerAccount } from './crm-customer-account.entity';
+import { CrmCustomerMaintenance } from './crm-customer-maintenance.entity';
 import { Dept } from '../dept/dept.entity';
 
 @Entity('crm_customers')
@@ -60,6 +61,15 @@ export class CrmCustomer {
 
   @OneToMany(() => CrmCustomerAccount, account => account.customer)
   accounts: CrmCustomerAccount[];
+
+    @OneToMany(() => CrmCustomerMaintenance, maintenance => maintenance.customer)
+  maintenances: CrmCustomerMaintenance[];
+
+  @Column({ name: 'created_by', length: 100, nullable: true, comment: '创建人' })
+  createdBy: string;
+
+  @Column({ name: 'updated_by', length: 100, nullable: true, comment: '更新人' })
+  updatedBy: string;
 
   /** 关联部门，用于展示所属公司名称 */
   @ManyToOne(() => Dept)
