@@ -431,13 +431,13 @@ const RoleList: React.FC = () => {
       title: '创建时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 108,
+      width: 120,
       render: (d: string) => d ? dayjs(d).format('YYYY-MM-DD') : '—',
     },
     {
       title: '操作',
       key: 'action',
-      width: 168,
+      width: 260,
       fixed: 'right' as const,
       render: (_: any, record: any) => (
         <Space size={0} split={<Divider type="vertical" style={{ margin: '0 2px' }} />}>
