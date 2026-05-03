@@ -1,12 +1,12 @@
-import { 
-  Entity, 
-  Column, 
-  PrimaryGeneratedColumn, 
-  CreateDateColumn, 
-  UpdateDateColumn, 
-  ManyToMany, 
-  JoinTable,
-  AfterLoad
+/**
+ * @file server/src/users/user.entity.ts
+ * @version 2.1.0 [2026-04-29]
+ * @desc 补充 hasSalesTarget / salesTarget 业绩目标字段
+ */
+import {
+  Entity, Column, PrimaryGeneratedColumn,
+  CreateDateColumn, UpdateDateColumn,
+  ManyToMany, JoinTable, AfterLoad,
 } from 'typeorm';
 import { Role } from '../role/role.entity';
 
@@ -18,7 +18,7 @@ export class User {
   @Column({ unique: true, comment: '登录账号' })
   username: string;
 
-  @Column({ select: false, comment: '密码' }) 
+  @Column({ select: false, comment: '密码' })
   password: string;
 
   @Column({ nullable: true, comment: '用户昵称' })
@@ -33,26 +33,33 @@ export class User {
   @Column({ nullable: true, comment: '手机号' })
   phone: string;
 
-  @Column({ name: 'dept_id', type: 'int', default: 1, comment: '分公司ID' })
-  deptId: number;
+  @Column({ name: 'dept_id', type: 'char', length: 36, nullable: true, comment: '所属分公司ID' })
+  deptId: string;
 
-  /** 💡 虚字段：所有角色的 Key 数组，用于前端权限判断 */
-  roleKeys: string[];
+  /** 是否设定业绩目标 */
+  @Column({ name: 'has_sales_target', type: 'tinyint', default: 0, comment: '是否设定业绩目标' })
+  hasSalesTarget: number;
 
-  /** 💡 虚字段：所有角色的名称字符串（逗号分隔），用于前端表格展示 */
+  /** 个人月度业绩目标金额（has_sales_target=1 时有效） */
+  @Column({
+    name: 'sales_target',
+    type: 'decimal', precision: 12, scale: 2,
+    nullable: true,
+    comment: '个人月度业绩目标金额',
+    transformer: { to: (v: number) => v, from: (v: string) => v ? parseFloat(v) : null },
+  })
+  salesTarget: number | null;
+
+  roleKeys:  string[];
   roleNames: string;
-
-  /** 💡 兼容旧字段：取第一个角色的 Key */
-  roleKey: string;
-
-  /** 💡 兼容旧字段：取第一个角色的名称 */
-  roleName: string;
+  roleKey:   string;
+  roleName:  string;
 
   @ManyToMany(() => Role, (role) => role.users)
   @JoinTable({
     name: 'sys_user_roles',
-    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
+    joinColumn:        { name: 'user_id',  referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'role_id',  referencedColumnName: 'id' },
   })
   roles: Role[];
 
@@ -64,18 +71,16 @@ export class User {
 
   @AfterLoad()
   handleRoleMapping() {
-    if (this.roles && this.roles.length > 0) {
-      this.roleKeys = this.roles.map(role => role.roleKey);
-      this.roleNames = this.roles.map(role => role.roleName).join(', ');
-      
-      // 兼容单体逻辑
-      this.roleKey = this.roles[0].roleKey;
-      this.roleName = this.roles[0].roleName;
+    if (this.roles?.length > 0) {
+      this.roleKeys  = this.roles.map(r => r.roleKey);
+      this.roleNames = this.roles.map(r => r.roleName).join(', ');
+      this.roleKey   = this.roles[0].roleKey;
+      this.roleName  = this.roles[0].roleName;
     } else {
-      this.roleKeys = [];
+      this.roleKeys  = [];
       this.roleNames = '暂无角色';
-      this.roleKey = 'user';
-      this.roleName = '职员';
+      this.roleKey   = 'user';
+      this.roleName  = '职员';
     }
   }
 }

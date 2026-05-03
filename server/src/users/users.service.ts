@@ -33,7 +33,7 @@ export class UsersService {
 
     const treeData = depts.map(dept => {
       const deptUsers = users
-        .filter(user => user.deptId === dept.id)
+        .filter(user => Number(user.deptId) === Number(dept.id))
         .map(user => ({
           title: `👤 ${user.nickname}`,
           value: `user-${user.id}`,

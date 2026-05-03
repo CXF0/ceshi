@@ -1,7 +1,7 @@
 /**
  * @file web/src/pages/dashboard/components/ConsultantView.tsx
- * @version 3.0.0 [2026-04-29]
- * @desc 材料起草任务监控，支持跳转合同详情
+ * @version 3.1.0 [2026-04-29]
+ * @desc 优化2：列宽合理分配，所有列加 ellipsis，防止超出
  */
 import React from 'react';
 import { Card, Table, Tag, Button, Space, Tooltip, Empty, Badge } from 'antd';
@@ -13,7 +13,7 @@ interface ConsultantViewProps {
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  draft:  { label: '草稿（在签）', color: 'orange' },
+  draft:  { label: '在签（草稿）', color: 'orange' },
   signed: { label: '已签约',       color: 'blue' },
   active: { label: '执行中',       color: 'green' },
   closed: { label: '已结项',       color: 'default' },
@@ -21,57 +21,67 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 const ConsultantView: React.FC<ConsultantViewProps> = ({ data }) => {
   const navigate = useNavigate();
-
   const pendingCount = data.filter(d => ['draft', 'signed'].includes(d.status)).length;
 
   const columns = [
     {
       title: '认证主体',
       key: 'customer',
-      width: 160,
+      width: 140,
       ellipsis: true,
       render: (_: any, record: any) => {
         const name = record.customer?.name || '—';
-        return <Tooltip title={name}><span style={{ fontWeight: 500, color: '#262626' }}>{name}</span></Tooltip>;
+        return (
+          <Tooltip title={name} placement="topLeft">
+            <span style={{ fontWeight: 500 }}>{name}</span>
+          </Tooltip>
+        );
       },
     },
     {
       title: '合同编号',
       dataIndex: 'contractNo',
       width: 130,
-      render: (v: string) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>,
+      ellipsis: true,
+      render: (v: string) => (
+        <Tooltip title={v}>
+          <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>
+        </Tooltip>
+      ),
     },
     {
-      title: '合同状态',
+      title: '状态',
       dataIndex: 'status',
-      width: 100,
+      width: 90,
       render: (status: string) => {
         const s = STATUS_MAP[status] || { label: status || '—', color: 'default' };
-        return <Tag color={s.color}>{s.label}</Tag>;
+        return <Tag color={s.color} style={{ fontSize: 11 }}>{s.label}</Tag>;
       },
     },
     {
       title: '所属公司',
       key: 'dept',
-      width: 110,
+      width: 90,
+      ellipsis: true,
       render: (_: any, record: any) => {
         const name = record.dept?.deptName || '—';
-        return <Tag color="cyan">{name}</Tag>;
+        return <Tag color="cyan" style={{ fontSize: 11 }}>{name}</Tag>;
       },
     },
     {
       title: '签约日期',
       dataIndex: 'signedDate',
-      width: 110,
-      render: (v: string) => v || <span style={{ color: '#bbb' }}>—</span>,
+      width: 100,
+      render: (v: string) => <span style={{ fontSize: 12 }}>{v || '—'}</span>,
     },
     {
       title: '操作',
       key: 'action',
-      width: 70,
+      width: 56,
       render: (_: any, record: any) => (
         <Button type="link" size="small" icon={<EyeOutlined />}
-          onClick={() => navigate(`/contract/${record.id}`)} style={{ padding: '0 4px' }}>
+          onClick={() => navigate(`/contract/${record.id}`)}
+          style={{ padding: '0 2px', fontSize: 12 }}>
           详情
         </Button>
       ),
@@ -79,22 +89,31 @@ const ConsultantView: React.FC<ConsultantViewProps> = ({ data }) => {
   ];
 
   return (
-    <Card bordered={false} style={{ borderRadius: 12 }}
+    <Card bordered={false} style={{ borderRadius: 12, height: '100%' }}
       title={
         <Space>
           <FileTextOutlined style={{ color: '#71ccbc' }} />
           <span>材料起草任务监控</span>
-          {pendingCount > 0 && <Badge count={pendingCount} style={{ backgroundColor: '#faad14' }} title={`${pendingCount} 项待处理`} />}
+          {pendingCount > 0 && (
+            <Badge count={pendingCount} style={{ backgroundColor: '#faad14' }} />
+          )}
         </Space>
       }
     >
       {data.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description={<span style={{ color: '#8c8c8c' }}><CheckCircleOutlined style={{ color: '#52c41a', marginRight: 4 }} />暂无待办任务 ✨</span>} />
+          description={<span style={{ color: '#8c8c8c' }}>
+            <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 4 }} />暂无待办任务
+          </span>} />
       ) : (
-        <Table dataSource={data} columns={columns} rowKey="id" size="small"
+        <Table
+          dataSource={data}
+          columns={columns}
+          rowKey="id"
+          size="small"
+          scroll={{ x: 620 }}
           pagination={{ pageSize: 6, size: 'small', showTotal: t => `共 ${t} 条` }}
-          scroll={{ x: 680 }} />
+        />
       )}
     </Card>
   );

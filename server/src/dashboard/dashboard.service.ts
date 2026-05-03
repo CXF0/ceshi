@@ -263,7 +263,22 @@ export class DashboardService {
 
     const revenue     = parseFloat(thisPeriod?.revenue || '0');
     const lastRevenue = parseFloat(prevPeriod?.revenue  || '0');
-    const TARGET      = this.getTarget(period);
+
+    // ✅ 优化4：从用户表读取业绩月度目标，按周期放大
+    const allUsers = await this.userRepo.find({ where: { status: 1 } });
+    const targetUsers = allUsers.filter((u: any) =>
+      visibleDeptIds.includes(String(u.deptId)) && u.hasSalesTarget
+    );
+    let monthlyTarget = 0;
+    if (salesUserId) {
+      const tu = targetUsers.find((u: any) => String(u.id) === salesUserId);
+      monthlyTarget = tu ? Number((tu as any).salesTarget || 0) : 0;
+    } else {
+      monthlyTarget = targetUsers.reduce((s: number, u: any) => s + Number(u.salesTarget || 0), 0);
+    }
+    const TARGET = period === 'quarter' ? monthlyTarget * 3
+                 : period === 'year'    ? monthlyTarget * 12
+                 : monthlyTarget;
 
     // 业绩曲线数据（按月拆分，用于折线图）
     const trendData = await this.getSalesTrend(visibleDeptIds, period, salesUserId);
@@ -272,7 +287,7 @@ export class DashboardService {
       periodRevenue:    revenue,
       lastRevenue,
       targetAmount:     TARGET,
-      targetProgress:   Math.min(Math.round((revenue / TARGET) * 100), 100),
+      targetProgress:   TARGET > 0 ? Math.min(Math.round((revenue / TARGET) * 100), 100) : 0,
       newContractCount: parseInt(thisPeriod?.count || '0'),
       followUpCount:    parseInt(followUp?.count   || '0'),
       growth: lastRevenue > 0
@@ -344,8 +359,13 @@ export class DashboardService {
   private async getSalesUserList(visibleDeptIds: string[]) {
     const users = await this.userRepo.find({ where: { status: 1 } });
     return users
-      .filter(u => visibleDeptIds.includes(String(u.deptId)))
-      .map(u => ({ id: String(u.id), name: u.nickname || u.username }));
+      .filter((u: any) => visibleDeptIds.includes(String(u.deptId)))
+      .map((u: any) => ({
+        id:             String(u.id),
+        name:           u.nickname || u.username,
+        hasSalesTarget: !!u.hasSalesTarget,
+        salesTarget:    u.hasSalesTarget ? Number(u.salesTarget || 0) : null,
+      }));
   }
 
   // ─────────────────────────────────────────────────────────
