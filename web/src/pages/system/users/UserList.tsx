@@ -143,7 +143,7 @@ const UserList: React.FC = () => {
   const columns = [
     {
       title: '用户',
-      key: 'user', width: 200,
+      key: 'user', width: 120,
       render: (_: any, record: any) => (
         <Space>
           <Avatar size={36} style={{ backgroundColor: '#71ccbc', flexShrink: 0 }} icon={<UserOutlined />} />
@@ -155,17 +155,17 @@ const UserList: React.FC = () => {
       ),
     },
     {
-      title: '手机号', dataIndex: 'phone', key: 'phone', width: 130,
+      title: '手机号', dataIndex: 'phone', key: 'phone', width: 100,
       render: (v: string) => v
         ? <span><PhoneOutlined style={{ marginRight: 4 }} />{v}</span>
         : <span style={{ color: '#d9d9d9' }}>未填写</span>,
     },
     {
-      title: '所属分公司', dataIndex: 'deptId', key: 'deptId', width: 140,
+      title: '所属分公司', dataIndex: 'deptId', key: 'deptId', width: 180,
       render: (id: string) => deptMap[id] || `部门${id}`,
     },
     {
-      title: '拥有角色', key: 'roles', width: 200,
+      title: '拥有角色', key: 'roles', width: 160,
       render: (_: any, record: any) => {
         const list: any[] = record.roles || [];
         if (!list.length) return <Tag color="default">暂无角色</Tag>;
@@ -173,7 +173,7 @@ const UserList: React.FC = () => {
       },
     },
     {
-      title: '业绩目标', key: 'target', width: 130,
+      title: '业绩目标', key: 'target', width: 120,
       render: (_: any, record: any) => {
         if (!record.hasSalesTarget) return <span style={{ color: '#d9d9d9' }}>未设定</span>;
         return (
@@ -187,7 +187,7 @@ const UserList: React.FC = () => {
       },
     },
     {
-      title: '状态', dataIndex: 'status', key: 'status', width: 90,
+      title: '状态', dataIndex: 'status', key: 'status', width: 80,
       render: (status: number, record: any) => (
         <Tooltip title={status === 1 ? '点击禁用' : '点击启用'}>
           <Tag icon={status === 1 ? <CheckCircleOutlined /> : <StopOutlined />}
@@ -200,7 +200,7 @@ const UserList: React.FC = () => {
       ),
     },
     {
-      title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 120,
+      title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 80,
       render: (d: string) => d ? dayjs(d).format('YYYY-MM-DD') : '—',
     },
     {

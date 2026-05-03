@@ -40,7 +40,6 @@ export class UsersService {
           key: `user-${user.id}`,
           isLeaf: true,
         }));
-
       return {
         title: dept.name,
         value: `dept-${dept.id}`,
@@ -64,7 +63,6 @@ export class UsersService {
     return [...treeData, roleNodes];
   }
 
-  /** 根据 ID 查找用户（内部使用） */
   async findById(id: number): Promise<User | null> {
     return await this.usersRepository.findOne({
       where: { id },
@@ -72,7 +70,6 @@ export class UsersService {
     });
   }
 
-  /** 根据用户名查找用户 */
   async findOne(username: string): Promise<User | null> {
     return await this.usersRepository.findOne({
       where: { username },
@@ -81,16 +78,18 @@ export class UsersService {
     });
   }
 
-  /** 获取所有用户列表 */
+  /** 获取所有用户列表 — 补充 hasSalesTarget / salesTarget */
   async findAll(): Promise<User[]> {
     return await this.usersRepository.find({
-      select: ['id', 'username', 'nickname', 'deptId', 'status', 'phone', 'createdAt'],
+      select: [
+        'id', 'username', 'nickname', 'deptId', 'status', 'phone', 'createdAt',
+        'hasSalesTarget', 'salesTarget',   // ← 补充这两个字段
+      ],
       relations: ['roles'],
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
   }
 
-  /** 注册/新增用户 */
   async register(userData: any): Promise<User> {
     const { username, password, roleIds, ...rest } = userData;
 
@@ -113,21 +112,22 @@ export class UsersService {
       (userInstance as unknown as User).roles = await this.roleRepository.findBy({ id: In(roleIds) });
     }
 
-    // 💡 沿用你验证过不报错的断言方式
     const savedUser = (await this.usersRepository.save(userInstance)) as unknown as User;
-    
-    const { password: _, ...result } = savedUser as any; 
+    const { password: _, ...result } = savedUser as any;
     return result as User;
   }
 
-  /** 更新用户 */
+  /** 更新用户 — select 补充 hasSalesTarget / salesTarget */
   async update(id: number, updateUserDto: any): Promise<User> {
     const { roleIds, password, ...updateData } = updateUserDto;
 
     const user = await this.usersRepository.findOne({
       where: { id },
       relations: ['roles'],
-      select: ['id', 'username', 'password', 'nickname', 'deptId', 'status', 'phone']
+      select: [
+        'id', 'username', 'password', 'nickname', 'deptId', 'status', 'phone',
+        'hasSalesTarget', 'salesTarget',   // ← 补充这两个字段
+      ],
     });
 
     if (!user) {
@@ -146,12 +146,10 @@ export class UsersService {
     }
 
     const savedUser = (await this.usersRepository.save(user)) as unknown as User;
-
     const { password: _, ...result } = savedUser as any;
     return result as User;
   }
 
-  /** 删除用户 */
   async remove(id: number): Promise<void> {
     const result = await this.usersRepository.delete(id);
     if (result.affected === 0) {

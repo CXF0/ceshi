@@ -1,17 +1,17 @@
 /**
  * @file web/src/pages/dashboard/components/SalesView.tsx
- * @version 3.3.0 [2026-04-29]
- * @desc 3. 公司目标=设定目标人员之和（已有）
- *       4. 折线图：去掉固定点，hover 才显示气泡；X 轴字体缩小防重叠；人员筛选只显示有目标的
+ * @version 3.4.0 [2026-04-29]
+ * @desc 3. 年/季目标 = 月度目标 × 12/3（前端换算，与后端一致）
+ *       4. 折线图：去掉渐变区域，改纯主题色曲线，更清晰
  */
-import React, { useMemo, useState, useRef, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, Row, Col, Statistic, Progress, Tag, Select, Radio, Space } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined, TrophyOutlined, FireOutlined, RiseOutlined } from '@ant-design/icons';
 
 interface SalesUser {
   id: string;
   name: string;
-  salesTarget?: number;
+  salesTarget?: number;   // 月度目标
   hasSalesTarget?: boolean;
 }
 
@@ -33,15 +33,14 @@ const PERIOD_OPTIONS = [
 const fmtMoney = (val: number) =>
   val >= 10000 ? `¥${(val / 10000).toFixed(2)}万` : `¥${val.toLocaleString()}`;
 
-// ── 贝塞尔折线图（hover 气泡，无固定点，X轴自适应字号）──
+// ── 折线图（贝塞尔曲线，无渐变区域，主题色）──────────
 const TrendChart: React.FC<{
-  data: { label: string; revenue: number }[];
+  chartData: { label: string; revenue: number }[];
   period: string;
-}> = ({ data, period }) => {
+}> = ({ chartData, period }) => {
   const [hovered, setHovered] = useState<number | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
 
-  if (!data || data.length < 2) {
+  if (!chartData || chartData.length < 2) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
         height: 140, color: '#bbb', fontSize: 13 }}>
@@ -55,12 +54,11 @@ const TrendChart: React.FC<{
   const cW = W - PAD.left - PAD.right;
   const cH = H - PAD.top  - PAD.bottom;
 
-  const maxVal = Math.max(...data.map(d => d.revenue), 1);
-  const minVal = 0;
+  const maxVal = Math.max(...chartData.map(d => d.revenue), 1);
 
-  const pts = data.map((d, i) => ({
-    x: PAD.left + (i / (data.length - 1)) * cW,
-    y: PAD.top  + cH - ((d.revenue - minVal) / (maxVal - minVal || 1)) * cH,
+  const pts = chartData.map((d, i) => ({
+    x: PAD.left + (i / (chartData.length - 1)) * cW,
+    y: PAD.top  + cH - (d.revenue / maxVal) * cH,
     ...d,
   }));
 
@@ -72,116 +70,83 @@ const TrendChart: React.FC<{
     return `${acc} C${cpx.toFixed(1)},${prev.y.toFixed(1)} ${cpx.toFixed(1)},${p.y.toFixed(1)} ${p.x.toFixed(1)},${p.y.toFixed(1)}`;
   }, '');
 
-  const areaPath = `${bezierPath} L${pts[pts.length - 1].x},${PAD.top + cH} L${pts[0].x},${PAD.top + cH} Z`;
-
   const fmtTick = (v: number) =>
     v >= 10000 ? `${(v / 10000).toFixed(0)}w`
     : v >= 1000 ? `${(v / 1000).toFixed(0)}k`
-    : `${v.toFixed(0)}`;
+    : `${Math.round(v)}`;
 
-  // ✅ 优化4：年度时 X 轴标签可能重叠，自适应字号和间隔展示
+  // 年度模式 X 轴标签间隔
+  const showLabel = (i: number) =>
+    !(period === 'year' && chartData.length > 8 && i % 2 !== 0);
+
   const labelFontSize = period === 'year' ? 7 : 9;
-  // 年度模式下只显示偶数索引的标签，防止重叠
-  const showLabel = (i: number) => {
-    if (period === 'year' && data.length > 8) return i % 2 === 0;
-    return true;
-  };
-
   const hoveredPt = hovered !== null ? pts[hovered] : null;
 
   return (
-    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" style={{ overflow: 'visible' }}>
-      <defs>
-        <linearGradient id="tg2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#71ccbc" stopOpacity="0.3" />
-          <stop offset="80%"  stopColor="#71ccbc" stopOpacity="0.04" />
-          <stop offset="100%" stopColor="#71ccbc" stopOpacity="0" />
-        </linearGradient>
-        <filter id="glow2">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ overflow: 'visible' }}>
       {/* 网格线 */}
       {[0, 0.25, 0.5, 0.75, 1].map(r => (
         <line key={r}
           x1={PAD.left} y1={PAD.top + cH * (1 - r)}
           x2={PAD.left + cW} y2={PAD.top + cH * (1 - r)}
-          stroke={r === 0 ? '#e8e8e8' : '#f5f5f5'} strokeWidth={1}
+          stroke={r === 0 ? '#e8e8e8' : '#f5f5f5'}
+          strokeWidth={1}
           strokeDasharray={r === 0 ? 'none' : '3,3'} />
       ))}
 
       {/* Y 轴标签 */}
       {[0, 0.5, 1].map(r => (
         <text key={r} x={PAD.left - 5} y={PAD.top + cH * (1 - r) + 4}
-          textAnchor="end" fontSize={8} fill="#c0c0c0">
+          textAnchor="end" fontSize={8} fill="#c8c8c8">
           {fmtTick(maxVal * r)}
         </text>
       ))}
 
-      {/* 面积 */}
-      <path d={areaPath} fill="url(#tg2)" />
-
-      {/* 折线（发光层） */}
-      <path d={bezierPath} fill="none" stroke="#a8e6de" strokeWidth={3}
-        strokeLinejoin="round" strokeLinecap="round" filter="url(#glow2)" opacity={0.6} />
-      {/* 折线（清晰层） */}
-      <path d={bezierPath} fill="none" stroke="#71ccbc" strokeWidth={2}
+      {/* ✅ 优化4：去掉渐变区域，只保留纯色曲线，更清晰 */}
+      {/* 主题色曲线 */}
+      <path d={bezierPath} fill="none" stroke="#71ccbc" strokeWidth={2.5}
         strokeLinejoin="round" strokeLinecap="round" />
 
-      {/* ✅ 优化4：透明热区触发 hover，不显示固定的点 */}
+      {/* 热区 + hover 效果 */}
       {pts.map((p, i) => (
         <g key={i}>
-          {/* 透明热区（比实际点大，易触发） */}
-          <circle cx={p.x} cy={p.y} r={12} fill="transparent"
+          <circle cx={p.x} cy={p.y} r={14} fill="transparent"
             onMouseEnter={() => setHovered(i)}
             onMouseLeave={() => setHovered(null)}
             style={{ cursor: 'crosshair' }} />
-
-          {/* hover 时才显示小点 */}
           {hovered === i && (
-            <circle cx={p.x} cy={p.y} r={4} fill="#71ccbc" stroke="#fff" strokeWidth={2} />
+            <circle cx={p.x} cy={p.y} r={4} fill="#fff" stroke="#71ccbc" strokeWidth={2} />
           )}
-
-          {/* X 轴标签 */}
           {showLabel(i) && (
-            <text x={p.x} y={H - 4} textAnchor="middle" fontSize={labelFontSize} fill="#bbb">
+            <text x={p.x} y={H - 5} textAnchor="middle"
+              fontSize={labelFontSize} fill="#c0c0c0">
               {p.label}
             </text>
           )}
         </g>
       ))}
 
-      {/* ✅ hover 气泡（浮层显示，不占位） */}
-      {hoveredPt && (
-        <g>
-          {/* 竖线 */}
-          <line x1={hoveredPt.x} y1={PAD.top} x2={hoveredPt.x} y2={PAD.top + cH}
-            stroke="#71ccbc" strokeWidth={1} strokeDasharray="3,2" opacity={0.5} />
-          {/* 气泡背景 */}
-          <rect
-            x={hoveredPt.x + (hoveredPt.x > W * 0.6 ? -92 : 8)}
-            y={hoveredPt.y - 20}
-            width={84} height={24} rx={6}
-            fill="#1a1a2e" opacity={0.88}
-          />
-          {/* 气泡文字 */}
-          <text
-            x={hoveredPt.x + (hoveredPt.x > W * 0.6 ? -50 : 50)}
-            y={hoveredPt.y - 4}
-            textAnchor="middle" fontSize={10} fill="white" fontWeight="600">
-            {fmtMoney(hoveredPt.revenue)}
-          </text>
-          {/* 气泡标签 */}
-          <text
-            x={hoveredPt.x + (hoveredPt.x > W * 0.6 ? -50 : 50)}
-            y={hoveredPt.y + 8}
-            textAnchor="middle" fontSize={8} fill="#aaa">
-            {hoveredPt.label}
-          </text>
-        </g>
-      )}
+      {/* hover 气泡 */}
+      {hoveredPt && (() => {
+        const flip = hoveredPt.x > W * 0.65;
+        const bx = hoveredPt.x + (flip ? -100 : 10);
+        const by = hoveredPt.y - 28;
+        const tx = bx + 45;
+        return (
+          <g>
+            <line x1={hoveredPt.x} y1={PAD.top} x2={hoveredPt.x} y2={PAD.top + cH}
+              stroke="#71ccbc" strokeWidth={1} strokeDasharray="3,2" opacity={0.4} />
+            <rect x={bx} y={by} width={90} height={28} rx={6}
+              fill="#1a1a2e" opacity={0.9} />
+            <text x={tx} y={by + 11} textAnchor="middle" fontSize={11} fill="white" fontWeight="600">
+              {fmtMoney(hoveredPt.revenue)}
+            </text>
+            <text x={tx} y={by + 23} textAnchor="middle" fontSize={8} fill="#8899aa">
+              {hoveredPt.label}
+            </text>
+          </g>
+        );
+      })()}
     </svg>
   );
 };
@@ -197,25 +162,29 @@ const SalesView: React.FC<SalesViewProps> = ({
     growth = 0, trendData = [],
   } = data;
 
-  // ✅ 优化4：销售人员下拉只显示配置了目标的人员
+  // ✅ 只显示配置了目标的人员
   const targetUserOptions = salesUsers
     .filter(u => u.hasSalesTarget && u.salesTarget)
     .map(u => ({
-      label: `${u.name}（¥${u.salesTarget! >= 10000 ? (u.salesTarget! / 10000).toFixed(1) + '万' : u.salesTarget}）`,
+      label: `${u.name}（¥${(u.salesTarget! >= 10000 ? (u.salesTarget! / 10000).toFixed(1) + '万' : u.salesTarget)}）`,
       value: u.id,
     }));
 
-  // ✅ 优化3：公司目标 = 所有设定了目标的人员之和；个人 = 该人的目标
+  // ✅ 优化3：目标换算（月度目标 × 系数）
+  const periodMultiplier = period === 'quarter' ? 3 : period === 'year' ? 12 : 1;
+
   const targetAmount = useMemo(() => {
     if (selectedUser) {
       const u = salesUsers.find(u => u.id === selectedUser);
-      return (u?.hasSalesTarget && u?.salesTarget) ? u.salesTarget : 0;
+      const monthlyTarget = (u?.hasSalesTarget && u?.salesTarget) ? u.salesTarget : 0;
+      return monthlyTarget * periodMultiplier;
     }
-    // 公司总目标
-    return salesUsers
+    // 公司总目标 = 所有设定目标人员月度目标之和 × 系数
+    const totalMonthly = salesUsers
       .filter(u => u.hasSalesTarget && u.salesTarget)
       .reduce((s, u) => s + (u.salesTarget || 0), 0);
-  }, [selectedUser, salesUsers]);
+    return totalMonthly * periodMultiplier;
+  }, [selectedUser, salesUsers, periodMultiplier]);
 
   const targetProgress = targetAmount > 0
     ? Math.min(Math.round((periodRevenue / targetAmount) * 100), 100)
@@ -236,17 +205,10 @@ const SalesView: React.FC<SalesViewProps> = ({
       title={<Space><TrophyOutlined style={{ color: '#faad14' }} /><span>销售业绩看板</span></Space>}
       extra={
         <Space>
-          {/* ✅ 只显示配置了目标的人员 */}
           {targetUserOptions.length > 0 && (
-            <Select
-              placeholder="全公司"
-              allowClear
-              style={{ width: 150 }}
-              size="small"
-              value={selectedUser}
-              onChange={v => onUserChange(v)}
-              options={targetUserOptions}
-            />
+            <Select placeholder="全公司" allowClear style={{ width: 150 }} size="small"
+              value={selectedUser} onChange={v => onUserChange(v)}
+              options={targetUserOptions} />
           )}
           <Radio.Group size="small" value={period} onChange={e => onPeriodChange(e.target.value)}
             options={PERIOD_OPTIONS} optionType="button" buttonStyle="solid" />
@@ -289,7 +251,9 @@ const SalesView: React.FC<SalesViewProps> = ({
                 <span style={{ fontSize: 11, color: '#8c8c8c' }}>
                   {targetProgress >= 100 ? '🎉 已完成！' : targetProgress >= 70 ? '📈 稳步推进' : '⚠️ 需加快'}
                 </span>
-                <span style={{ fontSize: 11, color: '#8c8c8c' }}>目标：{fmtMoney(targetAmount)}</span>
+                <span style={{ fontSize: 11, color: '#8c8c8c' }}>
+                  {periodLabel}目标：{fmtMoney(targetAmount)}
+                </span>
               </Row>
             </div>
           ) : (
@@ -317,14 +281,14 @@ const SalesView: React.FC<SalesViewProps> = ({
           </Row>
         </Col>
 
-        {/* 右：折线图 */}
+        {/* 右：趋势图 */}
         <Col xs={24} md={14}>
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#595959', marginBottom: 10 }}>
               业绩趋势曲线
               <span style={{ fontSize: 11, color: '#8c8c8c', marginLeft: 8 }}>— {selectedName}</span>
             </div>
-            <TrendChart data={trendData} period={period} />
+            <TrendChart chartData={trendData} period={period} />
           </div>
         </Col>
       </Row>

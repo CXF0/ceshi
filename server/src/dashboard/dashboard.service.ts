@@ -125,21 +125,25 @@ export class DashboardService {
       .groupBy('c.status')
       .getRawMany();
 
-    // 认证体系分布（基于当前可见合同）
+    // 认证体系分布：按大类（parent_name）聚合，支持金额/数量维度切换
     const certDist = await this.contractRepo
       .createQueryBuilder('c')
-      .select('c.certType', 'type')
+      .innerJoin('sys_certification_type', 'ct', 'ct.type_code = c.certType')
+      .select('ct.parent_code', 'parentCode')
+      .addSelect('ct.parent_name', 'type')          // 用大类名作为分组标签
       .addSelect('COUNT(c.id)', 'value')
+      .addSelect('SUM(c.totalAmount)', 'amount')
       .where('c.deptId IN (:...ids)', { ids: visibleDeptIds })
       .andWhere('c.certType IS NOT NULL')
       .andWhere('c.status != :status', { status: ContractStatus.DRAFT })
-      .groupBy('c.certType')
+      .groupBy('ct.parent_code')
+      .addGroupBy('ct.parent_name')
       .getRawMany();
 
-    // 认证体系种类（需关联 cert-types 表获取名称，此处先用 type_code 返回）
     const distribution = certDist.map(d => ({
-      type:  d.type,
-      value: parseInt(d.value),
+      type:   d.type,
+      value:  parseInt(d.value),
+      amount: parseFloat(d.amount || '0'),
     }));
 
     // 证书年审预警统计
