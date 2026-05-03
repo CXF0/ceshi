@@ -27,7 +27,7 @@ const ConsultantView: React.FC<ConsultantViewProps> = ({ data }) => {
     {
       title: '认证主体',
       key: 'customer',
-      width: 140,
+      width: 120,
       ellipsis: true,
       render: (_: any, record: any) => {
         const name = record.customer?.name || '—';
@@ -39,20 +39,9 @@ const ConsultantView: React.FC<ConsultantViewProps> = ({ data }) => {
       },
     },
     {
-      title: '合同编号',
-      dataIndex: 'contractNo',
-      width: 130,
-      ellipsis: true,
-      render: (v: string) => (
-        <Tooltip title={v}>
-          <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v || '—'}</span>
-        </Tooltip>
-      ),
-    },
-    {
       title: '状态',
       dataIndex: 'status',
-      width: 90,
+      width: 40,
       render: (status: string) => {
         const s = STATUS_MAP[status] || { label: status || '—', color: 'default' };
         return <Tag color={s.color} style={{ fontSize: 11 }}>{s.label}</Tag>;
@@ -71,13 +60,13 @@ const ConsultantView: React.FC<ConsultantViewProps> = ({ data }) => {
     {
       title: '签约日期',
       dataIndex: 'signedDate',
-      width: 100,
+      width: 60,
       render: (v: string) => <span style={{ fontSize: 12 }}>{v || '—'}</span>,
     },
     {
       title: '操作',
       key: 'action',
-      width: 56,
+      width: 40,
       render: (_: any, record: any) => (
         <Button type="link" size="small" icon={<EyeOutlined />}
           onClick={() => navigate(`/contract/${record.id}`)}
@@ -112,7 +101,7 @@ const ConsultantView: React.FC<ConsultantViewProps> = ({ data }) => {
           rowKey="id"
           size="small"
           scroll={{ x: 620 }}
-          pagination={{ pageSize: 6, size: 'small', showTotal: t => `共 ${t} 条` }}
+          pagination={{ pageSize: 10, size: 'small', showTotal: t => `共 ${t} 条` }}
         />
       )}
     </Card>

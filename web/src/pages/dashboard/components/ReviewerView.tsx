@@ -32,7 +32,7 @@ const ReviewerView: React.FC<ReviewerViewProps> = ({ alerts }) => {
     {
       title: '认证主体',
       dataIndex: 'customerName',
-      width: 130,
+      width: 140,
       ellipsis: true,
       render: (name: string) => (
         <Tooltip title={name} placement="topLeft">
@@ -62,7 +62,7 @@ const ReviewerView: React.FC<ReviewerViewProps> = ({ alerts }) => {
     {
       title: '剩余天数',
       dataIndex: 'daysLeft',
-      width: 110,
+      width: 100,
       render: (days: number) => {
         const { color, bg } = getAlertLevel(days ?? 999);
         return (
@@ -72,23 +72,25 @@ const ReviewerView: React.FC<ReviewerViewProps> = ({ alerts }) => {
         );
       },
     },
+    // {
+    //   title: '等级',
+    //   dataIndex: 'daysLeft',
+    //   width: 72,
+    //   render: (days: number) => {
+    //     const { color, label } = getAlertLevel(days ?? 999);
+    //     return <span style={{ color, fontWeight: 600, fontSize: 11 }}>{label}</span>;
+    //   },
+    // },
     {
-      title: '等级',
-      dataIndex: 'daysLeft',
-      width: 72,
-      render: (days: number) => {
-        const { color, label } = getAlertLevel(days ?? 999);
-        return <span style={{ color, fontWeight: 600, fontSize: 11 }}>{label}</span>;
-      },
-    },
-    {
-      title: '',
+      title: '操作',
       key: 'action',
       width: 48,
       render: () => (
         <Button type="link" size="small" icon={<EyeOutlined />}
           onClick={() => navigate('/certificates')}
-          style={{ padding: '0 2px', fontSize: 12 }} />
+          style={{ padding: '0 2px', fontSize: 12 }} >
+                    详情
+        </Button>
       ),
     },
   ];
@@ -123,7 +125,7 @@ const ReviewerView: React.FC<ReviewerViewProps> = ({ alerts }) => {
           rowKey="id"
           size="small"
           scroll={{ x: 600 }}
-          pagination={{ pageSize: 8, size: 'small', showTotal: t => `共 ${t} 条` }}
+          pagination={{ pageSize: 10, size: 'small', showTotal: t => `共 ${t} 条` }}
           // ✅ 优化3：去掉行背景色
         />
       )}

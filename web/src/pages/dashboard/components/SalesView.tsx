@@ -206,7 +206,7 @@ const SalesView: React.FC<SalesViewProps> = ({
       extra={
         <Space>
           {targetUserOptions.length > 0 && (
-            <Select placeholder="全公司" allowClear style={{ width: 150 }} size="small"
+            <Select placeholder="全公司" allowClear style={{ width: 220 }} size="small"
               value={selectedUser} onChange={v => onUserChange(v)}
               options={targetUserOptions} />
           )}
