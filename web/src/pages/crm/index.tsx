@@ -102,6 +102,8 @@ const CustomerList: React.FC = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [maintenanceForm] = Form.useForm();
+  const [accountForm] = Form.useForm();
+  const [accountVisible, setAccountVisible] = useState(false);
 
   const [filterName, setFilterName]           = useState('');
   const [filterIndustry, setFilterIndustry]   = useState<string | undefined>();
@@ -273,6 +275,28 @@ const CustomerList: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  const handleDeleteMaintenance = (maintenanceId: number) => {
+    if (!currentRow) return;
+    Modal.confirm({
+      title: '确认删除维护记录？',
+      onOk: async () => {
+        await CrmCustomerApi.removeMaintenance(currentRow.id, maintenanceId);
+        message.success('维护记录已删除');
+        handleShowDetail(currentRow);
+      },
+    });
+  };
+
+  const handleAddAccount = async (values: any) => {
+    if (!currentRow) return;
+    await CrmAccountApi.create({ ...values, customerId: currentRow.id });
+    message.success('账户新增成功');
+    setAccountVisible(false);
+    accountForm.resetFields();
+    handleShowDetail(currentRow);
+    fetchData();
+  };  
 
   const columns: ColumnsType<CustomerRecord> = [
     {
@@ -528,7 +552,7 @@ const CustomerList: React.FC = () => {
                         >
                           {acc.type === 'corporate' ? (
                             <Descriptions size="small" column={1} colon={false}>
-                              <Descriptions.Item label={<Text type="secondary">信用代码</Text>}>{acc.usciCode}</Descriptions.Item>
+                              <Descriptions.Item label={<Text type="secondary">账户类型</Text>}>{acc.type === 'corporate' ? '企业' : '个人'}</Descriptions.Item>
                               <Descriptions.Item label={<Text type="secondary">开户银行</Text>}>{acc.bankName}</Descriptions.Item>
                               <Descriptions.Item label={<Text type="secondary">银行账号</Text>}>{acc.bankAccount}</Descriptions.Item>
                               <Descriptions.Item label={<Text type="secondary">银行行号</Text>}>{acc.bankCode}</Descriptions.Item>
@@ -552,9 +576,9 @@ const CustomerList: React.FC = () => {
                   }}
                   locale={{ emptyText: <Empty description="暂无关联账户信息" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
                 />
-                <Button type="dashed" block icon={<PlusOutlined />} style={{ marginTop: 8 }}>新增账户</Button>
+                <PermButton perm="/crm:edit" type="dashed" block icon={<PlusOutlined />} style={{ marginTop: 8 }} onClick={() => setAccountVisible(true)}>新增账户</PermButton>
               </Tabs.TabPane>
-                            <Tabs.TabPane tab={`维护记录 (${currentRow.maintenances?.length || 0})`} key="3">
+              <Tabs.TabPane tab={`维护记录 (${currentRow.maintenances?.length || 0})`} key="3">
                 <Form form={maintenanceForm} layout="inline" onFinish={async (v) => {
                   if (!currentRow) return;
                   await CrmCustomerApi.addMaintenance(currentRow.id, v.content);
@@ -572,7 +596,10 @@ const CustomerList: React.FC = () => {
                 <Timeline style={{ marginTop: 16 }}>
                   {(currentRow.maintenances || []).map((item) => (
                     <Timeline.Item key={item.id}>
-                      <div><Text strong>{item.maintainer}</Text> <Text type="secondary">{new Date(item.maintainedAt).toLocaleString()}</Text></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div><Text strong>{item.maintainer}</Text> <Text type="secondary">{new Date(item.maintainedAt).toLocaleString()}</Text></div>
+                        <PermButton perm="/crm:delete" type="link" danger size="small" onClick={() => handleDeleteMaintenance(item.id)}>删除</PermButton>
+                      </div>
                       <div>{item.content}</div>
                     </Timeline.Item>
                   ))}
@@ -637,6 +664,26 @@ const CustomerList: React.FC = () => {
           <Form.Item name="address" label="详细地址">
             <Input.TextArea rows={3} placeholder="请输入企业的详细通讯地址或经营地址" />
           </Form.Item>
+        </Form>
+      </Drawer>
+      <Drawer
+        title={<span><PlusOutlined /> 新增财务账户</span>}
+        width={520}
+        onClose={() => setAccountVisible(false)}
+        open={accountVisible}
+        destroyOnClose
+        footer={<Space style={{ float: 'right' }}><Button onClick={() => setAccountVisible(false)}>取消</Button><Button type="primary" onClick={() => accountForm.submit()}>保存</Button></Space>}
+      >
+        <Form form={accountForm} layout="vertical" onFinish={handleAddAccount} initialValues={{ type: 'corporate', isDefault: false }}>
+          <Form.Item name="type" label="账户类型" rules={[{ required: true }]}>
+            <Select options={[{ label: '对公账户', value: 'corporate' }, { label: '个人账户', value: 'private' }]} />
+          </Form.Item>
+          <Form.Item name="accountName" label="账户名称" rules={[{ required: true, message: '请输入账户名称' }]}><Input /></Form.Item>
+          <Form.Item name="bankName" label="开户银行"><Input /></Form.Item>
+          <Form.Item name="bankAccount" label="银行账号"><Input /></Form.Item>
+          <Form.Item name="bankCode" label="联行号"><Input /></Form.Item>
+          <Form.Item name="alipayAccount" label="支付宝账号"><Input /></Form.Item>
+          <Form.Item name="isDefault" label="默认账户"><Select options={[{ label: '否', value: false }, { label: '是', value: true }]} /></Form.Item>
         </Form>
       </Drawer>
     </Card>

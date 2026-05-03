@@ -61,6 +61,15 @@ export class CrmController {
     return this.crmService.addMaintenance(id, req.user, normalizedContent);
   }
 
+  @Delete(':id/maintenances/:maintenanceId')
+  async removeMaintenance(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('maintenanceId', ParseIntPipe) maintenanceId: number,
+    @Req() req: any,
+  ) {
+    return this.crmService.removeMaintenance(id, maintenanceId, req.user);
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.crmService.findOne(id, req.user);

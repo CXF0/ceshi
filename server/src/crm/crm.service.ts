@@ -3,7 +3,7 @@
  * @version 3.2.0 [2026-04-28]
  * @desc dept_id 为 string；leftJoinAndSelect dept；数据隔离
  */
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CrmCustomer } from './crm-customer.entity';
@@ -86,7 +86,15 @@ async findAll(user: { deptId: string | number; roleKey: string }, query: any) {
     const rec = this.maintenanceRepo.create({ customerId: customer.id, maintainer: user.username || '系统', content });
     return this.maintenanceRepo.save(rec);
   }
-  
+
+  async removeMaintenance(id: number, maintenanceId: number, user: { deptId: string | number; roleKey: string }) {
+    await this.findOne(id, user);
+    const rec = await this.maintenanceRepo.findOne({ where: { id: maintenanceId, customerId: id } });
+    if (!rec) throw new NotFoundException('维护记录不存在');
+    await this.maintenanceRepo.remove(rec);
+    return { code: 200, message: '删除成功' };
+  }  
+
   async remove(id: number, user: { deptId: string | number; roleKey: string }) {
     const customer = await this.findOne(id, user);
     return this.customerRepo.softRemove(customer);

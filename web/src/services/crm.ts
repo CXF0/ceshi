@@ -16,6 +16,8 @@ export const CrmCustomerApi = {
   remove: (id: number) => request.delete(`/crm/customers/${id}`),
   /** ✅ 新增：新增客户维护记录 */
   addMaintenance: (id: number, content: string) => request.post(`/crm/customers/${id}/maintenances`, { content }),
+  /** ✅ 新增：删除客户维护记录 */
+  removeMaintenance: (id: number, maintenanceId: number) => request.delete(`/crm/customers/${id}/maintenances/${maintenanceId}`),
 };
 
 /** 客户财务账户 API */
