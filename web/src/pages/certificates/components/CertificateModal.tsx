@@ -12,9 +12,13 @@ import {
 } from 'antd';
 import { UploadOutlined, PaperClipOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { v4 as uuidv4 } from 'uuid';
 import request from '@/utils/request';
 import { CrmCustomerApi } from '@/services/crm';
+
+const createId = () =>
+  (crypto as any).randomUUID
+    ? (crypto as any).randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 interface Props {
   open: boolean;
@@ -168,7 +172,7 @@ const CertificateModal: React.FC<Props> = ({ open, initialValues, onCancel, onSu
         await request.put(`/certificates/${initialValues.id}`, payload);
         message.success('更新成功');
       } else {
-        await request.post('/certificates', { ...payload, id: uuidv4() });
+        await request.post('/certificates', { ...payload, id: createId() });
         message.success('录入成功');
       }
       onSuccess();

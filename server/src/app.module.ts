@@ -19,6 +19,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { RoleModule } from './role/role.module';
 import { DeptModule } from './dept/dept.module'; 
 import { FinPaymentsModule } from './fin-payments/fin-payments.module';
+import { SiteContentModule } from './site-content/site-content.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { FinPaymentsModule } from './fin-payments/fin-payments.module';
     CertificatesModule,
     DashboardModule,
     NotificationsModule,
+    SiteContentModule,
   ],
   controllers: [
     UploadController,

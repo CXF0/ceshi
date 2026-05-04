@@ -34,6 +34,7 @@ import NotificationCreate from './pages/system/notification/NotificationCreate';
 import UserList from './pages/system/users/UserList';
 import RoleList from './pages/system/roles/RoleList';
 import DeptList from './pages/system/dept/DeptList';
+import SiteContentSettings from './pages/system/site-content';
 import nprogress from './utils/nprogress';
 
 const { Header, Content, Sider } = Layout;
@@ -51,6 +52,7 @@ export const breadcrumbNameMap: Record<string, string> = {
   '/system/users':                 '用户管理',
   '/system/roles':                 '角色管理', 
   '/system/depts':                 '公司管理',
+  '/system/site-content':          '官网内容',
 };
 
 export const getBreadcrumbTitle = (path: string) => {
@@ -248,6 +250,7 @@ const App: React.FC = () => {
             <Route path="/system/users" element={<UserList />} />
             <Route path="/system/roles" element={<RoleList />} />
             <Route path="/system/depts" element={<DeptList />} />
+            <Route path="/system/site-content" element={<SiteContentSettings />} />
           </Route>
 
           {/* ③ 兜底 */}

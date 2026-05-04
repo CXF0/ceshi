@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS `sys_site_content` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `content` json NOT NULL,
+  `updated_by` int DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+

@@ -23,13 +23,17 @@ import {
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { v4 as uuidv4 } from 'uuid';
 import request from '@/utils/request';
 import PermButton from '@/components/PermButton';
 import {
   getPaymentsByContract, createPayment, updatePayment, deletePayment,
   type FinPaymentItem,
 } from '@/services/fin-payments';
+
+const createId = () =>
+  (crypto as any).randomUUID
+    ? (crypto as any).randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 // ── 状态配置 ──────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { color: string; label: string; next?: string; nextLabel?: string; step: number }> = {
@@ -288,7 +292,7 @@ const ContractDetail: React.FC = () => {
     try {
       const categoryId = certCodeToId[contract.certType];
       await request.post('/certificates', {
-        id: uuidv4(),
+        id: createId(),
         customer_id: String(contract.customer?.id || contract.customerId),
         category_id: categoryId,
         contract_id: Number(id),
