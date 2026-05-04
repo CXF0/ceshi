@@ -18,6 +18,7 @@ import {
   FileSearchOutlined,
   SafetyCertificateOutlined,  // ← 角色管理图标
   ApartmentOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 
 export interface MenuItem {
@@ -102,5 +103,11 @@ export const menuConfig: MenuItem[] = [
   label: '公司管理',
 },
     ],
+  },
+    {
+    key: '/website',
+    icon: <GlobalOutlined />,
+    roles: ['admin'],
+    label: '官网管理',
   },
 ];

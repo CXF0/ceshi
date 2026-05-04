@@ -35,6 +35,10 @@ import UserList from './pages/system/users/UserList';
 import RoleList from './pages/system/roles/RoleList';
 import DeptList from './pages/system/dept/DeptList';
 import nprogress from './utils/nprogress';
+import ServicesPage from './pages/homepage/ServicesPage';
+import CasesPage from './pages/homepage/CasesPage';
+import AboutPage from './pages/homepage/AboutPage';
+import WebsiteManagement from './pages/website';
 
 const { Header, Content, Sider } = Layout;
 
@@ -51,6 +55,7 @@ export const breadcrumbNameMap: Record<string, string> = {
   '/system/users':                 '用户管理',
   '/system/roles':                 '角色管理', 
   '/system/depts':                 '公司管理',
+  '/website':                     '网站管理',
 };
 
 export const getBreadcrumbTitle = (path: string) => {
@@ -223,6 +228,10 @@ const App: React.FC = () => {
         <Routes>
           {/* ① 官网首页 — 根路径，全屏独立，不套后台容器 */}
           <Route path="/" element={<Homepage />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/cases" element={<CasesPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          
 
           {/* ② 后台管理 — 套毛玻璃布局容器 */}
           <Route
@@ -248,6 +257,7 @@ const App: React.FC = () => {
             <Route path="/system/users" element={<UserList />} />
             <Route path="/system/roles" element={<RoleList />} />
             <Route path="/system/depts" element={<DeptList />} />
+            <Route path="/website" element={<WebsiteManagement />} />
           </Route>
 
           {/* ③ 兜底 */}

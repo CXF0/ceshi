@@ -1,7 +1,7 @@
 /**
  * @file server/src/app.module.ts
- * @version 2.1.0 [2026-04-28]
- * @desc 修复：补充注册 RoleModule，使 /api/role/* 路由生效
+ * @version 2.2.0 [2026-05-04]
+ * @desc 新增 SiteModule，提供 /api/site/* 官网管理接口
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -17,8 +17,9 @@ import { CertificatesModule } from './certificates/certificates.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RoleModule } from './role/role.module';
-import { DeptModule } from './dept/dept.module'; 
+import { DeptModule } from './dept/dept.module';
 import { FinPaymentsModule } from './fin-payments/fin-payments.module';
+import { SiteModule } from './site/site.module'; // ← 新增
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { FinPaymentsModule } from './fin-payments/fin-payments.module';
     CertificatesModule,
     DashboardModule,
     NotificationsModule,
+    SiteModule, // ← 新增
   ],
   controllers: [
     UploadController,
