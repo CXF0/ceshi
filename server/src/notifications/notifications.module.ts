@@ -4,13 +4,17 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { Notification } from './entities/notification.entity';
 import { NotificationTarget } from './entities/notification-target.entity';
+import { NotificationLike } from './entities/notification-like.entity';
+
+
 
 @Module({
   // 💡 关键：注册实体，这样 TypeORM 才能在 Service 里通过 @InjectRepository 找到它们
   imports: [
     TypeOrmModule.forFeature([
       Notification, 
-      NotificationTarget
+      NotificationTarget,
+      NotificationLike,   // ← 补充 NotificationLike entity
     ])
   ],
   controllers: [NotificationsController],

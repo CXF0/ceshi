@@ -1,72 +1,74 @@
+/**
+ * @file web/src/pages/system/notification/NotificationCreate.tsx
+ * @version 2.1.0 [2026-05-04]
+ * @desc 修复：
+ *   1. navigate('/notifications/list') → navigate('/system/notification')（路由对齐）
+ *   2. request('/users/org-tree', { method: 'GET' }) → request.get('/users/org-tree')
+ *   3. org-tree 数据解析兼容 res.data.data / res.data 两层结构
+ */
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Select, TreeSelect, Button, Upload, Space, message, Divider, Spin } from 'antd';
-import { UploadOutlined, SendOutlined, SaveOutlined } from '@ant-design/icons';
+import { Card, Form, Input, Select, TreeSelect, Button, Space, message, Divider, Spin } from 'antd';
+import { SendOutlined, SaveOutlined } from '@ant-design/icons';
 import { Editor, Toolbar } from '@wangeditor/editor-for-react';
 import { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor';
 import { saveNotification, getNotificationDetail } from '../../../services/notification';
-import { useSearchParams, useNavigate } from 'react-router-dom'; 
-import request from '../../../utils/request'; 
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import request from '../../../utils/request';
 import '@wangeditor/editor/dist/css/style.css';
 
 const { Option } = Select;
 
 const NotificationCreate: React.FC = () => {
-  const [form] = Form.useForm();
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const noticeId = searchParams.get('id'); // 从 URL 获取 ?id=8
+  const [form]           = Form.useForm();
+  const [searchParams]   = useSearchParams();
+  const navigate         = useNavigate();
+  const noticeId         = searchParams.get('id');
 
-  const [editor, setEditor] = useState<IDomEditor | null>(null);
-  const [html, setHtml] = useState('');
+  const [editor, setEditor]         = useState<IDomEditor | null>(null);
+  const [html, setHtml]             = useState('');
   const [targetScope, setTargetScope] = useState('all');
-  const [loading, setLoading] = useState(false);
-  const [initLoading, setInitLoading] = useState(false); 
-  const [treeData, setTreeData] = useState<any[]>([]);
+  const [loading, setLoading]       = useState(false);
+  const [initLoading, setInitLoading] = useState(false);
+  const [treeData, setTreeData]     = useState<any[]>([]);
   const [treeLoading, setTreeLoading] = useState(false);
 
   const token = localStorage.getItem('token');
 
-  // 💡 修正 1：详情回显逻辑
+  // ── 编辑模式：回显数据 ─────────────────────────────────
   useEffect(() => {
-    if (noticeId) {
-      setInitLoading(true);
-      // 确保这里的接口调用能对应上 /api/notifications/detail/8
-      getNotificationDetail(noticeId)
-        .then(res => {
-          // 💡 修正点：根据你发的 JSON，数据在 res.data 里面
-          const noticeData = res?.data || res; 
-          
-          if (noticeData) {
-            form.setFieldsValue({
-              title: noticeData.title,
-              type: noticeData.type,
-              targetScope: noticeData.targetScope,
-              targetKeys: noticeData.targets?.map((t: any) => `${t.targetType}-${t.targetId}`)
-            });
-            // 💡 修正点：强制更新富文本内容
-            setHtml(noticeData.content || '');
-            setTargetScope(noticeData.targetScope);
-          }
-        })
-        .catch((err) => {
-          console.error("回显报错:", err);
-          message.error("获取详情失败");
-        })
-        .finally(() => setInitLoading(false));
-    }
+    if (!noticeId) return;
+    setInitLoading(true);
+    getNotificationDetail(noticeId)
+      .then(res => {
+        const noticeData = (res as any)?.data || res;
+        if (noticeData) {
+          form.setFieldsValue({
+            title:       noticeData.title,
+            type:        noticeData.type,
+            targetScope: noticeData.targetScope,
+            targetKeys:  noticeData.targets?.map((t: any) => `${t.targetType}-${t.targetId}`),
+          });
+          setHtml(noticeData.content || '');
+          setTargetScope(noticeData.targetScope || 'all');
+        }
+      })
+      .catch(() => message.error('获取详情失败'))
+      .finally(() => setInitLoading(false));
   }, [noticeId, form]);
 
-  // 获取组织架构树
+  // ── 定向发布：加载组织架构树 ──────────────────────────
   useEffect(() => {
-    if (targetScope === 'custom') {
-      setTreeLoading(true);
-      request('/users/org-tree', { method: 'GET' })
-        .then(res => {
-          if (res && res.data) setTreeData(res.data); 
-        })
-        .catch(() => message.error("获取组织架构失败"))
-        .finally(() => setTreeLoading(false));
-    }
+    if (targetScope !== 'custom') return;
+    setTreeLoading(true);
+    // ✅ 修复：使用 request.get 而非 request(url, { method })
+    request.get('/users/org-tree')
+      .then((res: any) => {
+        // 兼容 res.data.data / res.data / res 三种结构
+        const tree = res?.data?.data ?? res?.data ?? res ?? [];
+        setTreeData(Array.isArray(tree) ? tree : []);
+      })
+      .catch(() => message.error('获取组织架构失败'))
+      .finally(() => setTreeLoading(false));
   }, [targetScope]);
 
   const toolbarConfig: Partial<IToolbarConfig> = { excludeKeys: ['fullScreen'] };
@@ -78,57 +80,64 @@ const NotificationCreate: React.FC = () => {
         fieldName: 'file',
         headers: { Authorization: `Bearer ${token}` },
         customInsert(res: any, insertFn: any) {
-          if (res && res.url) insertFn(res.url, res.name || 'image', res.url);
+          if (res?.url) insertFn(res.url, res.name || 'image', res.url);
           else message.error('图片上传失败');
         },
-      }
-    }
+      },
+    },
   };
 
   const onFinish = async (status: number) => {
     try {
       const values = await form.validateFields();
-      if (!html || html === '<p><br></p>') return message.warning('请输入通知正文内容');
+      if (!html || html === '<p><br></p>') {
+        message.warning('请输入通知正文内容');
+        return;
+      }
 
       setLoading(true);
-      
+
       let targets: any[] = [];
-      if (values.targetScope === 'custom' && values.targetKeys) {
+      if (values.targetScope === 'custom' && values.targetKeys?.length) {
         targets = values.targetKeys.map((key: string) => {
-          const [type, id] = key.split('-');
+          const parts    = key.split('-');
+          const type     = parts[0];
+          const idStr    = parts.slice(1).join('-'); // 兼容 role-key 含 '-' 的情况
           return {
             targetType: type,
-            targetId: type === 'role' ? id : parseInt(id),
+            targetId:   type === 'role' ? idStr : parseInt(idStr),
           };
         });
       }
 
       const payload = {
-        id: noticeId ? parseInt(noticeId) : undefined,
-        title: values.title,
-        type: values.type,
+        id:          noticeId ? parseInt(noticeId) : undefined,
+        title:       values.title,
+        type:        values.type,
         targetScope: values.targetScope,
-        content: html,
+        content:     html,
         targets,
-        status, 
+        status,
       };
 
       const res = await saveNotification(payload);
       if (res) {
         message.success(status === 0 ? '已存入草稿箱' : '通知发布成功！');
-        navigate('/notifications/list');
+        // ✅ 修复：跳转到正确路由
+        navigate('/system/notification');
       }
     } catch (error: any) {
-      if (error.errorFields) return; 
-      message.error(error.message || '操作失败');
+      if (error?.errorFields) return;
+      message.error(error?.message || '操作失败');
     } finally {
       setLoading(false);
     }
   };
 
+  // 销毁富文本编辑器
   useEffect(() => {
     return () => {
-      if (editor == null) return;
+      if (!editor) return;
       editor.destroy();
       setEditor(null);
     };
@@ -137,12 +146,13 @@ const NotificationCreate: React.FC = () => {
   return (
     <Spin spinning={initLoading} tip="正在加载公告数据...">
       <div style={{ padding: '24px', background: '#f5f7fa', minHeight: '100vh' }}>
-        <Card title={noticeId ? "编辑系统通知" : "发布系统通知"} bordered={false} style={{ maxWidth: 1000, margin: '0 auto', borderRadius: 8 }}>
-          <Form 
-            form={form} 
-            layout="vertical" 
-            initialValues={{ targetScope: 'all', type: 1 }}
-          >
+        <Card
+          title={noticeId ? '编辑系统通知' : '发布系统通知'}
+          bordered={false}
+          style={{ maxWidth: 1000, margin: '0 auto', borderRadius: 8 }}
+        >
+          <Form form={form} layout="vertical" initialValues={{ targetScope: 'all', type: 1 }}>
+
             <Form.Item name="title" label="通知标题" rules={[{ required: true, message: '请输入标题' }]}>
               <Input size="large" placeholder="请输入标题" />
             </Form.Item>
@@ -165,19 +175,30 @@ const NotificationCreate: React.FC = () => {
             </Space>
 
             {targetScope === 'custom' && (
-              <Form.Item name="targetKeys" label="选择目标范围" rules={[{ required: true }]}>
+              <Form.Item
+                name="targetKeys"
+                label="选择目标范围"
+                rules={[{ required: true, message: '请选择发布对象' }]}
+              >
                 <TreeSelect
                   treeData={treeData}
-                  treeCheckable={true}
+                  treeCheckable
                   showCheckedStrategy={TreeSelect.SHOW_PARENT}
+                  placeholder={treeLoading ? '加载中...' : '请选择部门、人员或角色'}
                   style={{ width: '100%' }}
                   loading={treeLoading}
+                  maxTagCount={5}
+                  showSearch
+                  treeNodeFilterProp="title"
                 />
               </Form.Item>
             )}
 
             <Form.Item label="通知正文内容" required>
-              <div className="editor-content-view" style={{ border: '1px solid #d9d9d9', borderRadius: 4, zIndex: 100 }}>
+              <div
+                className="editor-content-view"
+                style={{ border: '1px solid #d9d9d9', borderRadius: 4, zIndex: 100 }}
+              >
                 <Toolbar
                   editor={editor}
                   defaultConfig={toolbarConfig}
@@ -188,7 +209,7 @@ const NotificationCreate: React.FC = () => {
                   defaultConfig={editorConfig}
                   value={html}
                   onCreated={setEditor}
-                  onChange={editor => setHtml(editor.getHtml())}
+                  onChange={e => setHtml(e.getHtml())}
                   mode="default"
                   style={{ height: '400px', overflowY: 'hidden' }}
                 />
@@ -199,19 +220,19 @@ const NotificationCreate: React.FC = () => {
 
             <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
               <Space>
-                <Button size="large" onClick={() => navigate(-1)}>取消</Button>
-                <Button 
-                  icon={<SaveOutlined />} 
-                  size="large" 
+                <Button size="large" onClick={() => navigate('/system/notification')}>取消</Button>
+                <Button
+                  icon={<SaveOutlined />}
+                  size="large"
                   loading={loading}
                   onClick={() => onFinish(0)}
                 >
                   保存草稿
                 </Button>
-                <Button 
-                  type="primary" 
-                  size="large" 
-                  icon={<SendOutlined />} 
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<SendOutlined />}
                   loading={loading}
                   onClick={() => onFinish(1)}
                 >
@@ -219,6 +240,7 @@ const NotificationCreate: React.FC = () => {
                 </Button>
               </Space>
             </Form.Item>
+
           </Form>
         </Card>
       </div>

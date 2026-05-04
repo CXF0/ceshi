@@ -1,8 +1,14 @@
+/**
+ * @file server/src/users/users.service.ts
+ * @version 2.1.0 [2026-05-04]
+ * @desc 修复 getOrgTree：从数据库 depts 表读取公司，构建 上级→子公司→用户 三级树
+ */
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User } from './user.entity';
 import { Role } from '../role/role.entity';
+import { Dept } from '../dept/dept.entity';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -10,80 +16,113 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
+
+    @InjectRepository(Dept)
+    private deptRepository: Repository<Dept>,
   ) {}
 
-  /** ✨ 获取组织架构树 */
+  // ─────────────────────────────────────────────────────────
+  // 获取组织架构树（供定向发布 TreeSelect 使用）
+  // 结构：根公司 → [子公司 →] 用户；末尾追加「按角色群发」节点
+  // ─────────────────────────────────────────────────────────
   async getOrgTree(): Promise<any[]> {
-    const users = await this.usersRepository.find({
-      select: ['id', 'nickname', 'deptId'],
-      where: { status: 1 }
-    });
+    const [allDepts, users, roles] = await Promise.all([
+      this.deptRepository.find({ where: { status: 1 }, order: { createdAt: 'ASC' } }),
+      this.usersRepository.find({
+        select: ['id', 'nickname', 'username', 'deptId'],
+        where: { status: 1 },
+      }),
+      this.roleRepository.find({ select: ['id', 'roleName', 'roleKey'] }),
+    ]);
 
-    const depts = [
-      { id: 1, name: '寻梦控股昆明分公司' },
-      { id: 2, name: '寻梦认证成都分公司' },
-      { id: 3, name: '寻梦控股总公司' },
-      { id: 4, name: '寻梦认证杭州分公司' },
-      { id: 5, name: '寻梦控股宣城总公司' },
-    ];
-
-    const roles = await this.roleRepository.find({ select: ['id', 'roleName', 'roleKey'] });
-
-    const treeData = depts.map(dept => {
-      const deptUsers = users
-        .filter(user => Number(user.deptId) === Number(dept.id))
-        .map(user => ({
-          title: `👤 ${user.nickname}`,
-          value: `user-${user.id}`,
-          key: `user-${user.id}`,
-          isLeaf: true,
-        }));
-      return {
-        title: dept.name,
-        value: `dept-${dept.id}`,
-        key: `dept-${dept.id}`,
-        children: deptUsers,
-      };
-    });
-
-    const roleNodes = {
-      title: '按角色群发',
-      value: 'role-group',
-      key: 'role-group',
-      children: roles.map(role => ({
-        title: `🎖️ ${role.roleName}`,
-        value: `role-${role.roleKey}`,
-        key: `role-${role.roleKey}`,
+    // deptId → 用户节点列表
+    const usersByDept: Record<string, any[]> = {};
+    for (const u of users) {
+      const key = String(u.deptId);
+      if (!usersByDept[key]) usersByDept[key] = [];
+      usersByDept[key].push({
+        title:  `👤 ${u.nickname || u.username}`,
+        value:  `user-${u.id}`,
+        key:    `user-${u.id}`,
         isLeaf: true,
-      }))
+      });
+    }
+
+    // deptId → 树节点（含用户子节点）
+    const deptNodeMap: Record<string, any> = {};
+    for (const d of allDepts) {
+      deptNodeMap[d.id] = {
+        title:     `🏢 ${d.deptName}`,
+        value:     `dept-${d.id}`,
+        key:       `dept-${d.id}`,
+        _parentId: d.parentId,
+        children:  [...(usersByDept[d.id] || [])],
+      };
+    }
+
+    // 将子公司节点插到父公司 children 前部
+    const roots: any[] = [];
+    for (const d of allDepts) {
+      const node = deptNodeMap[d.id];
+      if (d.parentId && deptNodeMap[d.parentId]) {
+        deptNodeMap[d.parentId].children.unshift(node);
+      } else {
+        roots.push(node);
+      }
+    }
+
+    // 清理内部辅助字段，空 children 置 undefined
+    const clean = (nodes: any[]): any[] =>
+      nodes.map(({ _parentId: _, children, ...rest }) => ({
+        ...rest,
+        ...(children?.length ? { children: clean(children) } : {}),
+      }));
+
+    const deptTree = clean(roots);
+
+    // 角色群发节点
+    const roleNodes = {
+      title:    '按角色群发',
+      value:    'role-group',
+      key:      'role-group',
+      children: roles.map((r: any) => ({
+        title:  `🎖️ ${r.roleName}`,
+        value:  `role-${r.roleKey}`,
+        key:    `role-${r.roleKey}`,
+        isLeaf: true,
+      })),
     };
 
-    return [...treeData, roleNodes];
+    return [...deptTree, roleNodes];
   }
 
+  // ─────────────────────────────────────────────────────────
+  // 其余方法保持不变
+  // ─────────────────────────────────────────────────────────
+
   async findById(id: number): Promise<User | null> {
-    return await this.usersRepository.findOne({
+    return this.usersRepository.findOne({
       where: { id },
       relations: ['roles'],
     });
   }
 
   async findOne(username: string): Promise<User | null> {
-    return await this.usersRepository.findOne({
+    return this.usersRepository.findOne({
       where: { username },
       select: ['id', 'username', 'password', 'nickname', 'deptId', 'status'],
       relations: ['roles'],
     });
   }
 
-  /** 获取所有用户列表 — 补充 hasSalesTarget / salesTarget */
   async findAll(): Promise<User[]> {
-    return await this.usersRepository.find({
+    return this.usersRepository.find({
       select: [
         'id', 'username', 'nickname', 'deptId', 'status', 'phone', 'createdAt',
-        'hasSalesTarget', 'salesTarget',   // ← 补充这两个字段
+        'hasSalesTarget', 'salesTarget',
       ],
       relations: ['roles'],
       order: { createdAt: 'DESC' },
@@ -117,7 +156,6 @@ export class UsersService {
     return result as User;
   }
 
-  /** 更新用户 — select 补充 hasSalesTarget / salesTarget */
   async update(id: number, updateUserDto: any): Promise<User> {
     const { roleIds, password, ...updateData } = updateUserDto;
 
@@ -126,7 +164,7 @@ export class UsersService {
       relations: ['roles'],
       select: [
         'id', 'username', 'password', 'nickname', 'deptId', 'status', 'phone',
-        'hasSalesTarget', 'salesTarget',   // ← 补充这两个字段
+        'hasSalesTarget', 'salesTarget',
       ],
     });
 

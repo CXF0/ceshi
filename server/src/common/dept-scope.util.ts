@@ -26,7 +26,7 @@ export async function getDeptScope(
 ): Promise<string[]> {
   const deptId = String(userDeptId);
 
-  if (roleKey === 'admin' || roleKey === 'manager') {
+  if (roleKey === 'admin' || roleKey === 'head_manager') {
     const all = await deptRepo.find({ where: { status: 1 } });
     return all.map(d => d.id);
   }
