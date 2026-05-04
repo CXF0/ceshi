@@ -1,7 +1,10 @@
 /**
  * @file web/src/pages/dashboard/components/GlobalOverview.tsx
- * @version 3.2.0 [2026-05-04]
- * @desc 公告区域交互升级：点击 Bell 弹出 Drawer，展示用户可见公告卡片列表，点卡片跳详情
+ * @version 3.3.0 [2026-05-04]
+ * @desc 修复：
+ *   1. latestNotice 改从 /notifications/my 取（与抽屉同一数据源，保持一致）
+ *   2. loadNoticeList 解析层级对齐 @/utils/request（res.data.data）
+ *   3. 移除 unreadCount 单独维护，统一用 noticeList.length 控制红点
  */
 import React, { memo, useEffect, useState, useCallback } from 'react';
 import {
@@ -62,7 +65,6 @@ const GlobalOverview: React.FC<Props> = memo(({ user, dashboardData }) => {
   const navigate = useNavigate();
   const { has, isAdmin } = usePermission();
 
-  // ── 统计数字 ──────────────────────────────────────────────
   const adminStats     = dashboardData?.adminStats;
   const activeProjects = adminStats?.activeProjects
     ?? dashboardData?.consultantTasks?.filter((t: any) => t.status !== 'closed')?.length ?? 0;
@@ -72,57 +74,49 @@ const GlobalOverview: React.FC<Props> = memo(({ user, dashboardData }) => {
     ?.filter((a: any) => (a.daysLeft ?? 999) <= 30).length ?? 0;
   const deptName = dashboardData?.deptName || user?.deptName || '正达认证';
 
-  // ── 最新一条公告（仅用于 Bell 旁边的预览文字）────────────
-  const [latestNotice, setLatestNotice] = useState<any>(null);
-  const [noticeLoading, setNoticeLoading] = useState(true);
+  // ── 公告列表状态 ──────────────────────────────────────────
+  const [noticeList, setNoticeList]     = useState<any[]>([]);
+  const [noticeLoading, setNoticeLoading] = useState(true); // 初始预览加载
+  const [drawerOpen, setDrawerOpen]     = useState(false);
+  const [listLoading, setListLoading]   = useState(false);  // 抽屉内加载
+  const [hasNew, setHasNew]             = useState(false);  // 红点
 
-  // ── 公告抽屉 ──────────────────────────────────────────────
-  const [drawerOpen, setDrawerOpen]       = useState(false);
-  const [noticeList, setNoticeList]       = useState<any[]>([]);
-  const [listLoading, setListLoading]     = useState(false);
-  const [unreadCount, setUnreadCount]     = useState(0);
-
-  // 加载最新一条（仅预览）
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setNoticeLoading(true);
-        // 调公开列表接口取最新一条
-        const res: any = await request.get('/notifications', { params: { status: 1, pageSize: 1 } });
-        const list = Array.isArray(res?.data?.data) ? res.data.data
-          : Array.isArray(res?.data) ? res.data : [];
-        if (list.length > 0) {
-          setLatestNotice(list[0]);
-          setUnreadCount(1); // 有公告就显示红点
-        }
-      } catch {} finally { setNoticeLoading(false); }
-    };
-    load();
-  }, []);
-
-  // 打开抽屉时加载当前用户可见公告列表
-  const loadNoticeList = useCallback(async () => {
-    setListLoading(true);
+  /**
+   * 统一加载用户可见公告列表
+   * 数据来源：GET /notifications/my（需 JWT，返回用户可见范围，按时间倒序）
+   * @/utils/request 返回 AxiosResponse，业务数据在 res.data.data
+   */
+  const loadNoticeList = useCallback(async (silent = false) => {
+    if (!silent) setListLoading(true);
     try {
-      // 优先用 /notifications/my（需登录，返回用户可见范围）
       const res: any = await request.get('/notifications/my');
-      const list = Array.isArray(res?.data) ? res.data
-        : Array.isArray(res?.data?.data) ? res.data.data : [];
+      // res.data = { code: 200, data: [...], message: 'success' }
+      const list: any[] = res?.data?.data ?? [];
       setNoticeList(list);
+      // 有公告就显示红点
+      if (list.length > 0) setHasNew(true);
     } catch {
-      // fallback：公开列表
+      // fallback：调公开接口
       try {
         const res: any = await request.get('/notifications', { params: { status: 1, pageSize: 20 } });
-        const list = Array.isArray(res?.data?.data) ? res.data.data
-          : Array.isArray(res?.data) ? res.data : [];
+        const list: any[] = res?.data?.data ?? [];
         setNoticeList(list);
+        if (list.length > 0) setHasNew(true);
       } catch {}
-    } finally { setListLoading(false); }
+    } finally {
+      setListLoading(false);
+      setNoticeLoading(false);
+    }
   }, []);
+
+  // 页面初始化时静默加载，只为显示预览文字和红点
+  useEffect(() => {
+    loadNoticeList(true);
+  }, [loadNoticeList]);
 
   const handleBellClick = () => {
     setDrawerOpen(true);
-    setUnreadCount(0); // 打开后清除红点
+    setHasNew(false); // 打开后清除红点
     loadNoticeList();
   };
 
@@ -130,6 +124,9 @@ const GlobalOverview: React.FC<Props> = memo(({ user, dashboardData }) => {
     setDrawerOpen(false);
     navigate(`/system/notification/detail/${id}?from=dashboard`);
   };
+
+  // 预览文字取列表第一条（与抽屉同一数据源，保持一致）
+  const latestNotice = noticeList[0] ?? null;
 
   const visibleShortcuts = ALL_SHORTCUTS
     .filter(s => isAdmin || has(s.perm))
@@ -201,7 +198,7 @@ const GlobalOverview: React.FC<Props> = memo(({ user, dashboardData }) => {
             {noticeLoading ? (
               <Skeleton.Input size="small" active style={{ width: 200 }} />
             ) : (
-              <Badge count={unreadCount} size="small" offset={[-4, 2]}>
+              <Badge count={hasNew ? noticeList.length : 0} size="small" overflowCount={99} offset={[-4, 2]}>
                 <span
                   style={{ fontSize: 12, color: '#8c8c8c', cursor: 'pointer', userSelect: 'none' }}
                   onClick={handleBellClick}
@@ -215,7 +212,9 @@ const GlobalOverview: React.FC<Props> = memo(({ user, dashboardData }) => {
                         : latestNotice.title}
                       <RightOutlined style={{ fontSize: 9, marginLeft: 4 }} />
                     </span>
-                  ) : <span style={{ color: '#bbb' }}>暂无最新通知</span>}
+                  ) : (
+                    <span style={{ color: '#bbb' }}>暂无最新通知</span>
+                  )}
                 </span>
               </Badge>
             )}
@@ -223,7 +222,7 @@ const GlobalOverview: React.FC<Props> = memo(({ user, dashboardData }) => {
         </Row>
       </Card>
 
-      {/* ── 公告列表抽屉 ───────────────────────────────────── */}
+      {/* ── 公告列表抽屉 ── */}
       <Drawer
         title={
           <Space>
@@ -257,7 +256,10 @@ const GlobalOverview: React.FC<Props> = memo(({ user, dashboardData }) => {
               const typeConf = TYPE_CONFIG[item.type] || TYPE_CONFIG[1];
               const isUrgent = item.priority > 0;
               const timeStr  = item.createTime
-                ? new Date(item.createTime).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                ? new Date(item.createTime).toLocaleDateString('zh-CN', {
+                    month: '2-digit', day: '2-digit',
+                    hour: '2-digit',  minute: '2-digit',
+                  })
                 : '';
 
               return (
@@ -273,43 +275,28 @@ const GlobalOverview: React.FC<Props> = memo(({ user, dashboardData }) => {
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div style={{ width: '100%' }}>
-                    {/* 标题行 */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
                       {isUrgent && (
                         <FireOutlined style={{ color: '#ff4d4f', fontSize: 13, marginTop: 2, flexShrink: 0 }} />
                       )}
                       <span style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: '#262626',
-                        lineHeight: '20px',
-                        flex: 1,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
+                        fontSize: 14, fontWeight: 600, color: '#262626', lineHeight: '20px', flex: 1,
+                        display: '-webkit-box', WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical', overflow: 'hidden',
                       }}>
                         {item.title}
                       </span>
                       <RightOutlined style={{ fontSize: 10, color: '#bbb', marginTop: 4, flexShrink: 0 }} />
                     </div>
-
-                    {/* 元信息行 */}
                     <Space size={12} style={{ fontSize: 11, color: '#8c8c8c' }}>
                       <Tag color={typeConf.color} style={{ fontSize: 11, padding: '0 6px', lineHeight: '18px', margin: 0 }}>
                         {typeConf.text}
                       </Tag>
                       {timeStr && (
-                        <span>
-                          <ClockCircleOutlined style={{ marginRight: 3 }} />
-                          {timeStr}
-                        </span>
+                        <span><ClockCircleOutlined style={{ marginRight: 3 }} />{timeStr}</span>
                       )}
                       {item.viewCount !== undefined && (
-                        <span>
-                          <EyeOutlined style={{ marginRight: 3 }} />
-                          {item.viewCount}
-                        </span>
+                        <span><EyeOutlined style={{ marginRight: 3 }} />{item.viewCount}</span>
                       )}
                     </Space>
                   </div>

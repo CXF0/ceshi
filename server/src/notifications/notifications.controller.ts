@@ -1,9 +1,9 @@
 /**
  * @file server/src/notifications/notifications.controller.ts
- * @version 2.1.0 [2026-05-04]
- * @desc 鉴权策略：
- *   - 公告列表、详情：无需登录（Public，任何人可读）
- *   - 我的通知、点赞、like-status：需要 JWT（涉及用户身份）
+ * @version 2.2.0 [2026-05-04]
+ * @desc 修复：
+ *   1. GET /my 移除 mockUser，改为透传 req.user（需 JwtAuthGuard）
+ *   2. 鉴权策略：公告列表/详情无需登录，管理操作和用户相关接口需要登录
  */
 import {
   Controller, Get, Post, Put, Patch, Delete,
@@ -18,23 +18,26 @@ export class NotificationsController {
 
   // ── 公开接口（无需 JWT）─────────────────────────────────
 
-  /** 管理端 / 用户端：列表查询（公告列表所有登录用户均可访问） */
+  /** 管理端/用户端：公告列表 */
   @Get()
   async findAll(@Query() query: any) {
     const data = await this.notificationsService.findAll(query);
     return { code: 200, data, message: 'success' };
   }
 
-  /** 获取公告详情 */
+  /** 公告详情 */
   @Get('detail/:id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const data = await this.notificationsService.getDetail(id);
     return { code: 200, data, message: 'success' };
   }
 
-  // ── 需要登录的接口（携带 JWT）──────────────────────────
+  // ── 需要登录的接口 ──────────────────────────────────────
 
-  /** 用户端：获取我的通知（根据 token 中的用户信息过滤） */
+  /**
+   * 用户端：获取我的通知（当前用户可见范围）
+   * ✅ 修复：透传 req.user，不再使用 mockUser
+   */
   @Get('my')
   @UseGuards(JwtAuthGuard)
   async getMyNotifications(@Req() req: any) {
@@ -42,10 +45,7 @@ export class NotificationsController {
     return { code: 200, data, message: 'success' };
   }
 
-  /**
-   * 查询当前用户是否已点赞
-   * GET /notifications/:id/like-status
-   */
+  /** 查询当前用户是否已点赞 */
   @Get(':id/like-status')
   @UseGuards(JwtAuthGuard)
   async getLikeStatus(
@@ -56,10 +56,7 @@ export class NotificationsController {
     return { code: 200, data: { liked }, message: 'success' };
   }
 
-  /**
-   * 点赞 / 取消点赞（防重复）
-   * POST /notifications/like/:id
-   */
+  /** 点赞 / 取消点赞 */
   @Post('like/:id')
   @UseGuards(JwtAuthGuard)
   async toggleLike(
@@ -70,8 +67,6 @@ export class NotificationsController {
     return { code: 200, data, message: '操作成功' };
   }
 
-  // ── 管理端接口（需要登录）──────────────────────────────
-
   /** 新增公告 */
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -80,7 +75,7 @@ export class NotificationsController {
     return { code: 200, data: result, message: '创建成功' };
   }
 
-  /** 修改公告 */
+  /** 编辑公告 */
   @Put(':id')
   @UseGuards(JwtAuthGuard)
   async update(@Param('id', ParseIntPipe) id: number, @Body() data: any) {
@@ -88,7 +83,7 @@ export class NotificationsController {
     return { code: 200, data: result, message: '更新成功' };
   }
 
-  /** 更新状态（发布/撤回） */
+  /** 更新状态（发布 / 撤回） */
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard)
   async updateStatus(
