@@ -19,7 +19,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { RoleModule } from './role/role.module';
 import { DeptModule } from './dept/dept.module';
 import { FinPaymentsModule } from './fin-payments/fin-payments.module';
-import { SiteModule } from './site/site.module'; // ← 新增
+import { SiteModule } from './site/site.module'; 
+import { InquiryModule } from './inquiry/inquiry.module';
 
 @Module({
   imports: [
@@ -51,7 +52,8 @@ import { SiteModule } from './site/site.module'; // ← 新增
     CertificatesModule,
     DashboardModule,
     NotificationsModule,
-    SiteModule, // ← 新增
+    SiteModule, 
+    InquiryModule,
   ],
   controllers: [
     UploadController,

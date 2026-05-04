@@ -12,12 +12,13 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Card, Tabs, Form, Input, Button, Table, Modal, message,
   Switch, InputNumber, Select, Space, Popconfirm, Tag,
-  Row, Col, Divider, Spin, Empty,
+  Row, Col, Divider, Spin, Empty, Upload,
 } from 'antd';
+import type { UploadFile } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined,
   EyeOutlined, SaveOutlined, ArrowUpOutlined, ArrowDownOutlined,
-  GlobalOutlined,
+  GlobalOutlined, UploadOutlined, LoadingOutlined,
 } from '@ant-design/icons';
 import request from '@/utils/request';
 
@@ -75,7 +76,7 @@ function SiteConfigTab() {
   return (
     <Form form={form} layout="vertical" style={{ maxWidth: 900 }}>
 
-      <Divider orientation={"left" as any} orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
+      <Divider  orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
         🏠 Hero 区域文案
       </Divider>
       <Row gutter={24}>
@@ -111,7 +112,7 @@ function SiteConfigTab() {
         </Col>
       </Row>
 
-      <Divider orientation={"left" as any} orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
+      <Divider  orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
         📊 Hero 统计数字（4组）
       </Divider>
       <Row gutter={16}>
@@ -144,7 +145,7 @@ function SiteConfigTab() {
         })}
       </Row>
 
-      <Divider orientation={"left" as any} orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
+      <Divider  orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
         🏢 公司基础信息
       </Divider>
       <Row gutter={24}>
@@ -190,7 +191,7 @@ function SiteConfigTab() {
         </Col>
       </Row>
 
-      <Divider orientation={"left" as any} orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
+      <Divider orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
         🔍 SEO 配置
       </Divider>
       <Row gutter={24}>
@@ -211,7 +212,7 @@ function SiteConfigTab() {
         </Col>
       </Row>
 
-      <Divider orientation={"left" as any} orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
+      <Divider  orientationMargin={0} style={{ fontWeight: 700, fontSize: 14 }}>
         📄 子页面文案
       </Divider>
       <Row gutter={24}>
@@ -749,6 +750,353 @@ function HonorsTab() {
 }
 
 /* ══════════════════════════════════════════════════
+   Tab 5：客户经理配置
+══════════════════════════════════════════════════ */
+/* 图片上传子组件 — 点击上传，显示缩略图，上传中 loading */
+interface ImgUploadProps {
+  value?: string;
+  onChange?: (url: string) => void;
+  folder: string;
+  shape?: 'circle' | 'square';
+  size?: number;
+  placeholder?: string;
+}
+function ImgUpload({ value, onChange, folder, shape = 'square', size = 80, placeholder = '上传图片' }: ImgUploadProps) {
+  const [uploading, setUploading] = useState(false);
+  const token = localStorage.getItem('token') || '';
+
+  const beforeUpload = async (file: File) => {
+    const ok = ['image/jpeg','image/png','image/gif','image/webp'].includes(file.type);
+    if (!ok) { message.error('仅支持 JPG / PNG / GIF / WEBP 格式'); return Upload.LIST_IGNORE; }
+    if (file.size > 5 * 1024 * 1024) { message.error('图片不能超过 5MB'); return Upload.LIST_IGNORE; }
+
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(`/api/common/upload/${folder}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const json = await res.json();
+      const url = json?.url ?? json?.data?.url;
+      if (!url) throw new Error('未返回 URL');
+      onChange?.(url);
+      message.success('上传成功');
+    } catch (e: any) {
+      message.error(e.message || '上传失败');
+    } finally {
+      setUploading(false);
+    }
+    return Upload.LIST_IGNORE; // 阻止 antd 默认上传行为
+  };
+
+  const radius = shape === 'circle' ? '50%' : 12;
+  return (
+    <Upload showUploadList={false} beforeUpload={beforeUpload} accept="image/*">
+      <div style={{
+        width: size, height: size, borderRadius: radius,
+        border: '1px dashed #d1d5db', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden', background: '#f9fafb', position: 'relative',
+        transition: 'border-color 0.2s',
+      }}
+        onMouseEnter={e => (e.currentTarget.style.borderColor = '#2563eb')}
+        onMouseLeave={e => (e.currentTarget.style.borderColor = '#d1d5db')}
+      >
+        {uploading ? (
+          <LoadingOutlined style={{ fontSize: 20, color: '#2563eb' }} />
+        ) : value ? (
+          <>
+            <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {/* hover 遮罩 */}
+            <div style={{
+              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              opacity: 0, transition: 'opacity 0.2s', borderRadius: radius,
+              color: 'white', fontSize: 12, fontWeight: 600, flexDirection: 'column', gap: 4,
+            }}
+              className="img-upload-hover"
+            >
+              <UploadOutlined style={{ fontSize: 16 }} />
+              <span>重新上传</span>
+            </div>
+            <style>{`.img-upload-hover:hover{opacity:1!important}`}</style>
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', color: '#9ca3af' }}>
+            <UploadOutlined style={{ fontSize: 20, display: 'block', marginBottom: 4 }} />
+            <span style={{ fontSize: 11 }}>{placeholder}</span>
+          </div>
+        )}
+      </div>
+    </Upload>
+  );
+}
+
+function ManagersTab() {
+  const [data, setData]           = useState<any[]>([]);
+  const [loading, setLoading]     = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving]       = useState(false);
+  const [form] = Form.useForm();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res: any = await request.get('/site/managers', { params: { all: 1 } });
+      const list = res?.data?.data ?? res?.data ?? [];
+      setData(Array.isArray(list) ? list : []);
+    } catch { message.error('加载客户经理失败'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => {
+    setEditingId(null);
+    form.resetFields();
+    form.setFieldsValue({ isActive: true, sortOrder: data.length + 1 });
+    setModalOpen(true);
+  };
+
+  const openEdit = (record: any) => {
+    setEditingId(record.id);
+    form.setFieldsValue({
+      ...record,
+      isActive: record.isActive === 1,
+    });
+    setModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setSaving(true);
+      const payload = {
+        ...values,
+        isActive: values.isActive ? 1 : 0,
+        ...(editingId ? { id: editingId } : {}),
+      };
+      if (editingId) {
+        await request.put(`/site/managers/${editingId}`, payload);
+      } else {
+        await request.post('/site/managers', payload);
+      }
+      message.success(editingId ? '已更新' : '已添加');
+      setModalOpen(false);
+      load();
+    } catch (e: any) {
+      if (e?.errorFields) return;
+      message.error('保存失败');
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await request.delete(`/site/managers/${id}`);
+      message.success('已删除');
+      load();
+    } catch { message.error('删除失败'); }
+  };
+
+  const AVATAR_COLORS = ['#2563eb','#7c3aed','#0891b2','#059669','#dc2626'];
+
+  const columns = [
+    {
+      title: '顺序', dataIndex: 'sortOrder', width: 60,
+      render: (v: number) => <Tag color="blue">{v}</Tag>,
+    },
+    {
+      title: '头像 / 姓名', width: 180,
+      render: (_: any, r: any) => (
+        <Space>
+          {r.avatarUrl
+            ? <img src={r.avatarUrl} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #eff6ff' }} alt="" />
+            : <div style={{ width: 40, height: 40, borderRadius: '50%', background: AVATAR_COLORS[r.id % 5], display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 16 }}>{r.name?.[0]}</div>
+          }
+          <div>
+            <div style={{ fontWeight: 700 }}>{r.name}</div>
+            <div style={{ fontSize: 12, color: '#9ca3af' }}>{r.title}</div>
+          </div>
+        </Space>
+      ),
+    },
+    {
+      title: '简介', dataIndex: 'bio', ellipsis: true,
+      render: (v: string) => <span style={{ fontSize: 13, color: '#6b7280' }}>{v || '—'}</span>,
+    },
+    {
+      title: '二维码', width: 80,
+      render: (_: any, r: any) => r.qrcodeUrl
+        ? <img src={r.qrcodeUrl} style={{ width: 40, height: 40, borderRadius: 6, border: '1px solid #f3f4f6' }} alt="qr" />
+        : <span style={{ color: '#d1d5db', fontSize: 12 }}>未配置</span>,
+    },
+    {
+      title: '提示语', dataIndex: 'tips', width: 120,
+      render: (v: string) => <span style={{ fontSize: 12 }}>{v}</span>,
+    },
+    {
+      title: '状态', dataIndex: 'isActive', width: 80,
+      render: (v: number) => <Tag color={v === 1 ? 'success' : 'default'}>{v === 1 ? '显示' : '隐藏'}</Tag>,
+    },
+    {
+      title: '操作', width: 120, fixed: 'right' as const,
+      render: (_: any, r: any) => (
+        <Space>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(r)}>编辑</Button>
+          <Popconfirm title="确认删除？" onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      {/* 说明卡片 */}
+      <div style={{ background: 'linear-gradient(135deg,#eff6ff,#f0f9ff)', borderRadius: 12, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, border: '1px solid #bfdbfe' }}>
+        <span style={{ fontSize: 28 }}>👤</span>
+        <div>
+          <div style={{ fontWeight: 700, color: '#1d4ed8', fontSize: 14 }}>客户经理配置</div>
+          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+            配置的客户经理将展示在官网首页底部和「关于我们」页面，支持多人，按顺序显示。官网访客可点击查看经理信息并扫码咨询。
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: '#9ca3af', fontSize: 13 }}>共 {data.length} 位客户经理</span>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={load}>刷新</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>添加客户经理</Button>
+        </Space>
+      </div>
+
+      <Table
+        rowKey="id" columns={columns} dataSource={data}
+        loading={loading} scroll={{ x: 800 }} pagination={false}
+        size="middle"
+      />
+
+      <Modal
+        title={editingId ? '编辑客户经理' : '添加客户经理'}
+        open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)}
+        confirmLoading={saving} okText="保存" width={560} destroyOnClose
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
+                <Input placeholder="如：李顾问" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="title" label="职位">
+                <Input placeholder="如：高级认证顾问" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="bio" label="简介">
+            <TextArea rows={3} placeholder="如：10年认证行业经验，擅长 ISO 体系、CMMI 评估..." />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              {/* antd Form.Item 会自动把 value/onChange 注入给唯一子组件 */}
+              <Form.Item
+                name="avatarUrl"
+                label="职业照"
+                extra="点击上传，支持 JPG/PNG，≤5MB"
+              >
+                <ImgUpload
+                  folder="managers"
+                  shape="circle"
+                  size={88}
+                  placeholder="上传职业照"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="qrcodeUrl"
+                label="微信二维码"
+                extra="点击上传，建议正方形，≤5MB"
+              >
+                <ImgUpload
+                  folder="managers"
+                  shape="square"
+                  size={88}
+                  placeholder="上传二维码"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="tips" label="二维码下方提示语">
+                <Input placeholder="扫码立即咨询" />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="sortOrder" label="排列顺序">
+                <InputNumber min={1} max={99} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="isActive" label="是否显示" valuePropName="checked">
+                <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* 预览区 */}
+          <Form.Item label="预览效果" style={{ marginBottom: 0 }}>
+            <Form.Item noStyle shouldUpdate>
+              {({ getFieldValue }) => {
+                const avatarUrl = getFieldValue('avatarUrl');
+                const name      = getFieldValue('name') || '姓名';
+                const title     = getFieldValue('title') || '职位';
+                const bio       = getFieldValue('bio') || '简介';
+                const qrcodeUrl = getFieldValue('qrcodeUrl');
+                const tips      = getFieldValue('tips') || '扫码立即咨询';
+                return (
+                  <div style={{ display: 'flex', gap: 16, padding: '16px', background: '#f9fafb', borderRadius: 12, border: '1px dashed #e5e7eb' }}>
+                    <div style={{ textAlign: 'center', width: 100, flexShrink: 0 }}>
+                      {avatarUrl
+                        ? <img src={avatarUrl} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid #eff6ff' }} alt="" />
+                        : <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 22, margin: '0 auto' }}>{name[0]}</div>
+                      }
+                      <div style={{ fontWeight: 700, fontSize: 13, marginTop: 6 }}>{name}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>{title}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, marginBottom: 8 }}>{bio}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {qrcodeUrl
+                          ? <img src={qrcodeUrl} style={{ width: 56, height: 56, borderRadius: 6 }} alt="" />
+                          : <div style={{ width: 56, height: 56, borderRadius: 6, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#9ca3af' }}>二维码</div>
+                        }
+                        <div style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>{tips}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
+            </Form.Item>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════
    主组件
 ══════════════════════════════════════════════════ */
 export default function WebsiteManagement() {
@@ -757,6 +1105,7 @@ export default function WebsiteManagement() {
     { key: 'services', label: '🏷 认证服务',  children: <ServicesTab />   },
     { key: 'cases',    label: '📁 客户案例',  children: <CasesTab />      },
     { key: 'honors',   label: '🏆 荣誉资质',  children: <HonorsTab />     },
+    { key: 'managers', label: '👤 客户经理',  children: <ManagersTab />   },
   ];
 
   return (
