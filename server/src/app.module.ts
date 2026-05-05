@@ -1,7 +1,7 @@
 /**
  * @file server/src/app.module.ts
- * @version 2.2.0 [2026-05-04]
- * @desc 新增 SiteModule，提供 /api/site/* 官网管理接口
+ * @version 2.3.0 [2026-05-05]
+ * @desc 使用环境变量管理数据库配置，移除硬编码敏感信息
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -19,8 +19,16 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { RoleModule } from './role/role.module';
 import { DeptModule } from './dept/dept.module';
 import { FinPaymentsModule } from './fin-payments/fin-payments.module';
-import { SiteModule } from './site/site.module'; 
+import { SiteModule } from './site/site.module';
 import { InquiryModule } from './inquiry/inquiry.module';
+
+function getRequiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value || !value.trim()) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
 
 @Module({
   imports: [
@@ -28,15 +36,15 @@ import { InquiryModule } from './inquiry/inquiry.module';
 
     TypeOrmModule.forRoot({
       type: 'mysql',
-      host: '121.43.138.82',
-      port: 3306,
-      username: 'www_zhengdatong',
-      password: 'Chenzi@911',
-      database: 'www_zhengdatong',
+      host: getRequiredEnv('DB_HOST'),
+      port: Number(process.env.DB_PORT || 3306),
+      username: getRequiredEnv('DB_USER'),
+      password: getRequiredEnv('DB_PASS'),
+      database: getRequiredEnv('DB_NAME'),
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: false,
-      logging: true,
-      timezone: '+08:00',
+      logging: process.env.DB_LOGGING === 'true',
+      timezone: process.env.DB_TIMEZONE || '+08:00',
       connectorPackage: 'mysql2',
     }),
 
@@ -52,11 +60,9 @@ import { InquiryModule } from './inquiry/inquiry.module';
     CertificatesModule,
     DashboardModule,
     NotificationsModule,
-    SiteModule, 
+    SiteModule,
     InquiryModule,
   ],
-  controllers: [
-    UploadController,
-  ],
+  controllers: [UploadController],
 })
 export class AppModule {}
